@@ -10,7 +10,7 @@ from sqlconnect import (
 )
 from handlers.onboarding import (
     handle_get_primary_need,
-    handle_get_insurance_goal,
+    # handle_get_insurance_goal,
     handle_collect_age,
     handle_collect_income,
     handle_collect_budget,
@@ -44,7 +44,7 @@ class ImprovedChatBot:
 
     def _validate_context_completeness(self) -> bool:
         """Ensure all required fields are collected before recommendations"""
-        required_fields = ['primary_need', 'insurance_goal', 'age', 'income', 'budget', 'term_length', 'coverage_required']
+        required_fields = ['primary_need', 'age', 'income', 'budget', 'term_length', 'coverage_required']
         return all(field in self.context for field in required_fields)
 
     def handle_message(self, query: str) -> Dict[str, Any]:
@@ -71,7 +71,7 @@ class ImprovedChatBot:
     def _handle_state(self, state: str, query: str) -> Dict[str, Any]:
         handlers = {
             "get_primary_need": handle_get_primary_need,
-            "get_insurance_goal": handle_get_insurance_goal,
+            # "get_insurance_goal": handle_get_insurance_goal,
             "collect_age": handle_collect_age,
             "collect_income": handle_collect_income,
             "collect_budget": handle_collect_budget,

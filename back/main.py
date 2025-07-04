@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from cbot import ImprovedChatBot
-from sqlconnect import get_chat_history
 
 app = FastAPI(
     title="Insurance Chatbot API",
@@ -48,16 +47,29 @@ def chat(request: ChatRequest):
         
         # If it's the first message (no query), we also send back the history.
         if not request.query:
-            history_tuples = get_chat_history(bot.user_id)
-            history_dicts = [{"text": msg, "type": msg_type} for msg_type, msg in history_tuples]
+            history_from_context = bot.context.get("chat_history", [])
             
+            # Check if resuming in the recommendation phase
+            if bot.context.get("context_state") == "recommendation_given_phase" and bot.context.get("shown_recommendations"):
+                last_recommendation_answer = "Based on your profile, here are two policies I recommend:" # A generic re-engagement message
+                
+                # Re-create the options based on the stored recommendations
+                structured_policies = bot.context.get("shown_recommendations", [])
+                options = [f"Apply for {item['name']}" for item in structured_policies] + ["Get More Details"]
+
+                return {
+                    "answer": last_recommendation_answer,
+                    "options": options,
+                    "chat_history": history_from_context,
+                }
+
             # Get the initial welcome message from the bot
             response_data = bot.handle_message("")
             
             return {
                 "answer": response_data.get("answer", "Welcome! How can I help?"),
                 "options": response_data.get("options"),
-                "chat_history": history_dicts,
+                "chat_history": history_from_context,
             }
 
         # For subsequent messages, just handle the query.

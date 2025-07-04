@@ -52,6 +52,88 @@ def get_policy_by_name(policy_name: str) -> Optional[Dict[str, Any]]:
     return policy
 
 
+def get_user_session(phone_number: str) -> Dict[str, Any]:
+    """
+    Retrieves user and their context in one go. If user doesn't exist, creates them.
+    Dynamically handles the presence of the 'chat_history' column.
+    """
+    conn = get_mysql_connection()
+    cursor = conn.cursor(dictionary=True)
+    
+    try:
+        # Check for the existence of the chat_history column
+        cursor.execute("SHOW COLUMNS FROM user_context LIKE 'chat_history'")
+        has_chat_history_column = cursor.fetchone() is not None
+
+        # Dynamically build the SELECT query
+        select_query = """
+            SELECT ui.*, uc.*
+            FROM user_info ui
+            LEFT JOIN user_context uc ON ui.user_id = uc.user_id
+            WHERE ui.phone_number = %s
+        """
+        cursor.execute(select_query, (phone_number,))
+        session_data = cursor.fetchone()
+
+        if session_data:
+            # User and context found, deserialize JSON fields
+            json_fields = ["state_history", "shown_recommendations", "retrieved_docs"]
+            if has_chat_history_column:
+                json_fields.append("chat_history")
+
+            for key in json_fields:
+                if key in session_data and isinstance(session_data.get(key), str):
+                    try:
+                        session_data[key] = json.loads(session_data[key])
+                    except (json.JSONDecodeError, TypeError):
+                        session_data[key] = [] if 'history' in key or 'docs' in key else None
+            
+            if not session_data.get("chat_history"):
+                session_data["chat_history"] = []
+
+            return session_data
+
+        # If no user is found, create one
+        cursor.execute("INSERT INTO user_info (phone_number) VALUES (%s)", (phone_number,))
+        new_user_id = cursor.lastrowid
+        
+        # Create a default context for the new user
+        default_context = {
+            "user_id": new_user_id,
+            "context_state": "welcome",
+            "state_history": ["welcome"],
+            "chat_history": []
+        }
+        
+        # Dynamically build the INSERT query
+        insert_cols = ["user_id", "context_state", "state_history"]
+        insert_vals = [new_user_id, default_context["context_state"], json.dumps(default_context["state_history"])]
+        
+        if has_chat_history_column:
+            insert_cols.append("chat_history")
+            insert_vals.append(json.dumps(default_context["chat_history"]))
+
+        placeholders = ", ".join(["%s"] * len(insert_cols))
+        insert_query = f"INSERT INTO user_context ({', '.join(insert_cols)}) VALUES ({placeholders})"
+        
+        cursor.execute(insert_query, tuple(insert_vals))
+        conn.commit()
+
+        # Fetch the newly created user info to return a complete session object
+        cursor.execute("SELECT * FROM user_info WHERE user_id = %s", (new_user_id,))
+        new_user_info = cursor.fetchone()
+
+        return {**new_user_info, **default_context}
+
+    except mysql.connector.Error as err:
+        print(f"Database error in get_user_session: {err}")
+        conn.rollback()
+        raise
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def get_or_create_user(phone_number: str) -> Dict[str, Any]:
     """
     Implements the stateful user flow:
@@ -193,6 +275,7 @@ def update_user_context(user_id: int, updates: Dict[str, Any]):
 
 def create_lead(
     user_id: int,
+    name: str,
     policy_id: Optional[str],
     contact_method: str,
     contact_value: str,
@@ -201,10 +284,10 @@ def create_lead(
     conn = get_mysql_connection()
     cursor = conn.cursor()
     query = """
-    INSERT INTO lead_capture (user_id, policy_id, contact_method, contact_value)
-    VALUES (%s, %s, %s, %s)
+    INSERT INTO lead_capture (user_id, name, policy_id, contact_method, contact_value)
+    VALUES (%s, %s, %s, %s, %s)
     """
-    cursor.execute(query, (user_id, policy_id, contact_method, contact_value))
+    cursor.execute(query, (user_id, name, policy_id, contact_method, contact_value))
     conn.commit()
     cursor.close()
     conn.close()

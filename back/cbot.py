@@ -4,9 +4,7 @@ from typing import Any, Dict
 from langchain.memory import ConversationBufferMemory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from sqlconnect import (
-    get_chat_history,
-    get_or_create_user,
-    get_user_context,
+    get_user_session,
     log_chat_message,
     update_user_context,
 )
@@ -30,13 +28,13 @@ from utils import is_general_question
 
 class ImprovedChatBot:
     def __init__(self, phone_number: str):
-        user_data = get_or_create_user(phone_number=phone_number)
-        self.user_id = user_data["user_id"]
-        self.context = get_user_context(self.user_id) or {}
+        session_data = get_user_session(phone_number)
+        self.user_id = session_data["user_id"]
+        self.context = session_data or {}
         self.memory = ConversationBufferMemory(
             chat_memory=ChatMessageHistory(),
             memory_key="chat_history",
-            return_messages=True
+            return_messages=True,
         )
         self._load_chat_history()
 
@@ -48,11 +46,6 @@ class ImprovedChatBot:
                     self.memory.chat_memory.add_user_message(msg.get("data", {}).get("content", ""))
                 elif msg.get("type") == "ai":
                     self.memory.chat_memory.add_ai_message(msg.get("data", {}).get("content", ""))
-        else:
-            # Fallback to old get_chat_history if not in context
-            chat_history = get_chat_history(self.user_id)
-            for msg_type, msg in chat_history:
-                (self.memory.chat_memory.add_user_message if msg_type == "user" else self.memory.chat_memory.add_ai_message)(msg)
 
     def _update_context(self, updates: Dict[str, Any]):
         self.context.update(updates)

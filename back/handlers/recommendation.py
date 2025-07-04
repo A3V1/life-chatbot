@@ -7,7 +7,7 @@ from config import llm, retriever, RECOMMENDATION_PROMPT
 from handlers.general_qa import handle_general_questions
 from sqlconnect import get_policy_by_id, get_policy_by_name
 from utils import clean_button_input
-
+from handlers.closing import handle_application
 logger = logging.getLogger(__name__)
 
 def _safe_int_conversion(value: Any) -> Optional[int]:
@@ -70,10 +70,9 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
         # Use the original query for routing, as cleaning might remove keywords.
         if _is_application_button(query):
             policy_id = _extract_policy_id_from_button(query, bot)
-            bot._update_context({"selected_policy": policy_id, "context_state": "application"})
+            bot._update_context({"selected_policy": policy_id, "context_state": "contact_capture"})
             # The main loop will now handle the transition to the application state
-            return {"answer": "Thank you. Let's proceed with your application."}
-
+            return handle_application(bot, query)
         if "compare" in query.lower():
             return _compare_policies(bot)
 

@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS `user_info` (
 CREATE TABLE IF NOT EXISTS `user_context` (
   `context_id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT NOT NULL,
+  `name` VARCHAR(255) NULL,
   `context_state` VARCHAR(100) NULL DEFAULT 'greeting',
   `user_intent` VARCHAR(100) NULL,
   `primary_need` VARCHAR(100) NULL,
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS `policy_catalog` (
 CREATE TABLE IF NOT EXISTS `lead_capture` (
   `lead_id` INT NOT NULL AUTO_INCREMENT,
   `user_id` INT NOT NULL,
+  `name` VARCHAR(255) NULL,
   `policy_id` VARCHAR(50) NULL,
   `contact_method` VARCHAR(50) NULL,
   `contact_value` VARCHAR(255) NOT NULL,

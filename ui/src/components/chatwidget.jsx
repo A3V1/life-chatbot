@@ -11,9 +11,14 @@ const ChatWidget = () => {
   const [showLogin, setShowLogin] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState('');
   const messagesEndRef = useRef(null);
+  const inputRef = useRef(null); // New ref for the input field
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const focusInput = () => {
+    inputRef.current?.focus();
   };
 
   useEffect(() => {
@@ -52,6 +57,7 @@ const ChatWidget = () => {
       }
       
       setShowLogin(false);
+      focusInput(); // Focus input after successful login
     } catch (error) {
       console.error('Error logging in:', error);
       // Optionally, show an error message to the user
@@ -83,7 +89,12 @@ const ChatWidget = () => {
         sender: 'bot',
         options: response.data.options,
       };
-      setMessages((prevMessages) => [...prevMessages, botResponse]);
+      setMessages((prevMessages) => {
+        const updatedMessages = [...prevMessages, botResponse];
+        // Ensure input is focused after bot response
+        setTimeout(focusInput, 0); // Use setTimeout to ensure focus after state update
+        return updatedMessages;
+      });
     } catch (error) {
       console.error('Error sending message:', error);
       const botResponse = {
@@ -246,6 +257,7 @@ const ChatWidget = () => {
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               disabled={isTyping}
+              ref={inputRef}
             />
             <button className="input-send-btn" title="Send" onClick={handleSendClick} disabled={isTyping}>
                 <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#FFFFFF"><path d="M0 0h24v24H0z" fill="none"/><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>

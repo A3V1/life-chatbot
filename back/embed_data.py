@@ -1,4 +1,4 @@
-from .pinecone_handler import upload_vectorstore
+from pinecone_handler import upload_vectorstore
 from dotenv import load_dotenv
 
 def main():

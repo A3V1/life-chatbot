@@ -1,4 +1,5 @@
 import os
+import json
 import uuid
 from typing import Any, Dict, Optional
 
@@ -27,6 +28,17 @@ def get_mysql_data() -> list[tuple]:
     cursor.close()
     conn.close()
     return data
+
+
+def get_policy_by_id(policy_id: str) -> Optional[Dict[str, Any]]:
+    """Fetches a policy from the policy_catalog table by its ID."""
+    conn = get_mysql_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT * FROM policy_catalog WHERE policy_id = %s", (policy_id,))
+    policy = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    return policy
 
 
 def get_policy_by_name(policy_name: str) -> Optional[Dict[str, Any]]:
@@ -122,16 +134,17 @@ def get_user_context(user_id: int) -> Dict[str, Any]:
     cursor.close()
     conn.close()
 
-    if context and "state_history" in context and isinstance(context["state_history"], str):
-        import json
-        try:
-            context["state_history"] = json.loads(context["state_history"])
-        except (json.JSONDecodeError, TypeError):
-            context["state_history"] = [] # Reset if invalid JSON
-    
     if not context:
-        return {"user_id": user_id, "context_state": "welcome", "state_history": ["welcome"]}
-        
+        return {"user_id": user_id, "context_state": "welcome", "state_history": ["welcome"], "chat_history": "[]"}
+
+    # Deserialize JSON fields
+    for key in ["state_history", "chat_history", "shown_recommendations", "retrieved_docs"]:
+        if key in context and isinstance(context[key], str):
+            try:
+                context[key] = json.loads(context[key])
+            except (json.JSONDecodeError, TypeError):
+                context[key] = [] if key in ["state_history", "chat_history", "shown_recommendations", "retrieved_docs"] else context[key] # Reset if invalid JSON
+
     return context
 
 
@@ -146,6 +159,12 @@ def update_user_context(user_id: int, updates: Dict[str, Any]):
     # Get valid column names from the user_context table
     cursor.execute("SHOW COLUMNS FROM user_context")
     valid_columns = {row[0] for row in cursor.fetchall()}
+
+    # Serialize JSON fields before updating
+    json_fields = ["state_history", "chat_history", "shown_recommendations", "retrieved_docs"]
+    for key in json_fields:
+        if key in updates and not isinstance(updates[key], str):
+            updates[key] = json.dumps(updates[key])
 
     # Filter updates to only include keys that are valid columns
     filtered_updates = {k: v for k, v in updates.items() if k in valid_columns}
@@ -212,3 +231,19 @@ def log_chat_message(user_id: int, message_type: str, message: str):
     conn.commit()
     cursor.close()
     conn.close()
+
+def keyword_search_policies(query: str) -> list[Dict[str, Any]]:
+    """Performs a keyword search on policy names and descriptions."""
+    conn = get_mysql_connection()
+    cursor = conn.cursor(dictionary=True)
+    search_term = f"%{query}%"
+    query_sql = """
+    SELECT * FROM policy_catalog
+    WHERE policy_name LIKE %s OR description LIKE %s
+    LIMIT 2
+    """
+    cursor.execute(query_sql, (search_term, search_term))
+    policies = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return policies

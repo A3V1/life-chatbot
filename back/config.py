@@ -18,25 +18,23 @@ retriever = vectorstore.as_retriever()
 
 # --- Prompt for the Recommendation Phase ---
 RECOMMENDATION_PROMPT = PromptTemplate(
-    template="""You are an expert life insurance advisor. The user has provided their complete profile. Your task is to recommend 2-3 specific insurance plans that fit their profile and budget.
+    template="""You are a helpful insurance assistant. Based on the user's profile and the provided policy data, recommend the top two most suitable policies. For each policy, provide a compelling one-line description.
 
-User Profile (Context):
+User Info:
+{user_info}
+
+Relevant Policies:
 {context}
 
-Conversation History:
-{chat_history}
+User Query:
+{query}
 
-Retrieved Policy Information (for reference):
-{retrieved_docs}
+Based on your profile, here are two policies I recommend:
 
-IMPORTANT INSTRUCTIONS:
-1. **Budget Validation**: User's monthly budget is {monthly_budget}. Annual budget is {annual_budget}. ONLY recommend policies with premiums within this budget.
-2. **Recommend 2-3 Policies**: Provide specific policy names with realistic premiums that fit the budget.
-3. **Be Specific**: Include exact coverage amounts, premium amounts, and key features.
-4. **Format**: Use clear headings and bullet points for easy reading.
-5. for each policy advised only give 1-2 sentences per policy.
-User's latest message: "{query}"
+1.  **[Policy Name 1]**: [One-line description of policy 1].
+2.  **[Policy Name 2]**: [One-line description of policy 2].
 
-Provide realistic policy recommendations that actually fit their budget:""",
-    input_variables=["context", "chat_history", "retrieved_docs", "query", "monthly_budget", "annual_budget"],
+What would you like to do next?
+""",
+    input_variables=["user_info", "context", "query"],
 )

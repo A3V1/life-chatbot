@@ -6,7 +6,7 @@ from sqlconnect import create_lead
 def handle_application(bot, query: str) -> Dict[str, Any]:
     policy_name = bot.context.get("selected_policy", "the selected policy")
     bot._update_context({"context_state": "contact_capture"})
-    return {"answer": f"Great! To start your application for {policy_name}, I need your full name."}
+    return {"answer": f"Great! To start your application, I need your full name."}
 
 def handle_contact_capture(bot, query: str) -> Dict[str, Any]:
     if len(query) > 2:

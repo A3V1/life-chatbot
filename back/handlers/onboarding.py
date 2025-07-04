@@ -6,22 +6,11 @@ def handle_get_primary_need(bot, query: str) -> Dict[str, Any]:
     if query:
         cleaned_query = clean_button_input(query)
         bot._update_context({"primary_need": cleaned_query, "context_state": "collect_age"})
-        # return handle_get_insurance_goal(bot, "")
         return handle_collect_age(bot, "")
     return {
         "answer": "Welcome! To find the best policy, let's start with your primary goal.",
         "options": ["Term Life", "Whole Life", "ULIP", "Child Plan", "Endowment Plan",],
     }
-
-# def handle_get_insurance_goal(bot, query: str) -> Dict[str, Any]:
-#     if query:
-#         cleaned_query = clean_button_input(query)
-#         bot._update_context({"insurance_goal": cleaned_query, "context_state": "collect_age"})
-#         return handle_collect_age(bot, "")
-#     return {
-#         "answer": "What is the main purpose of this insurance?",
-#         "options": ["Child's Education", "Leave a Legacy", "Loan Protection", "Wealth Creation"],
-#     }
 
 def handle_collect_age(bot, query: str) -> Dict[str, Any]:
     if query:

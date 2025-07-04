@@ -1,4 +1,6 @@
 import os
+import sys
+import requests
 from pinecone import Pinecone
 from langchain_pinecone import PineconeVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -9,24 +11,7 @@ from datetime import datetime, date
 
 
 def build_page_content(row):
-    return f"""Policy Name: {row[2]}
-Policy Type: {row[3]}
-Coverage Amount: ₹{row[5]}
-Annual Premium: ₹{row[4]}
-Sum Assured: ₹{row[6]}
-
-Eligibility: {row[19]}
-Entry Age: {row[12]}–{row[13]} years
-Policy Term: {row[14]}–{row[15]} years
-Renewability: {row[16]}
-
-Claim Process: {row[17]}
-Maturity Benefits: {row[10]}
-Return on Maturity: {row[11]}
-Waiting Period: {row[9]}
-
-Tax Benefits: {row[18]}
-"""
+    return f"Policy: {row[1]} from {row[2]}, with coverage up to ₹{row[5]} and premium of ₹{row[9]}."
 
 
 def prepare_documents():
@@ -35,26 +20,25 @@ def prepare_documents():
 
     for row in mysql_data:
         metadata = {
-            "id": row[0],
-            "insurer_name": row[1],
-            "policy_name": row[2],
+            "policy_id": row[0],
+            "policy_name": row[1],
+            "provider_name": row[2],
             "policy_type": row[3],
-            "premium": row[4],
+            "coverage_min": row[4],
             "coverage_amount": row[5],
-            "sum_assured": row[6],
-            "co_payment": row[7],
-            "network_hospitals": row[8],
-            "waiting_period": row[9],
-            "maturity_benefits": row[10],
-            "return_on_maturity": row[11],
-            "entry_age_min": row[12],
-            "entry_age_max": row[13],
-            "policy_term_min": row[14],
-            "policy_term_max": row[15],
-            "renewability": row[16],
-            "claim_process": row[17],
-            "tax_benefits": row[18],
-            "eligibility": row[19],
+            "policy_term_min": row[6],
+            "policy_term_max": row[7],
+            "premium_min": row[8],
+            "premium": row[9],
+            "entry_age_min": row[10],
+            "entry_age_max": row[11],
+            "claim_settlement_ratio": row[12],
+            "riders": row[13],
+            "exclusions": row[14],
+            "tax_benefits": row[15],
+            "payout_options": row[16],
+            "benefits": row[17],
+            "claim_process": row[18],
         }
 
         metadata = {k: v for k, v in metadata.items() if v is not None}
@@ -74,7 +58,16 @@ def prepare_documents():
 
 def upload_vectorstore(index_name="insurance-chatbot", namespace="default"):
     pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-    embedding = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    try:
+        embedding = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+    except requests.exceptions.ConnectionError:
+        print("\n--- Network Connection Error ---")
+        print("Failed to connect to Hugging Face to download the embedding model.")
+        print("This is likely due to a network issue, a firewall blocking the connection, or a DNS problem.")
+        print("Please check your internet connection and ensure 'huggingface.co' is accessible, then restart the application.")
+        print("---------------------------------\n")
+        sys.exit(1)
+        
     documents = prepare_documents()
 
     # Optional: create the index if not present

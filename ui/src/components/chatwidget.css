@@ -22,16 +22,17 @@
 }
 
 .chatbot-container {
-  width: 370px;
-  height: 80vh;
-  max-height: 700px;
+  width: 380px; /* Slightly wider */
+  height: 85vh; /* Make it longer */
+  max-height: 750px; /* Increase max height */
   background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 8px 32px rgba(44, 62, 80, 0.18);
+  border-radius: 20px; /* Slightly more rounded corners */
+  box-shadow: 0 10px 40px rgba(44, 62, 80, 0.25); /* Enhanced shadow for depth */
   overflow: hidden;
   font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease-in-out; /* Smooth transitions for size changes */
 }
 
 .chatbot-header {
@@ -39,8 +40,9 @@
   align-items: center;
   background: linear-gradient(90deg, #0077b6 60%, #0099e5 100%);
   color: #fff;
-  padding: 18px 20px 14px 20px;
-  border-bottom: 1px solid #e3f2fd;
+  padding: 20px 22px 16px 22px; /* Increased padding */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Softer border */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for header */
 }
 .chatbot-avatar {
   margin-right: 14px;
@@ -210,10 +212,10 @@
 
 .chatbot-messages {
   flex: 1;
-  padding: 20px;
+  padding: 25px; /* Increased padding */
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 18px; /* Increased gap between messages */
   overflow-y: auto;
   background-color: #f9f9f9;
   height: 100%;
@@ -258,17 +260,18 @@
 }
 
 .message {
-  padding: 10px 15px;
-  border-radius: 18px;
+  padding: 12px 18px; /* Increased padding */
+  border-radius: 20px; /* More rounded message bubbles */
   max-width: 80%;
   word-wrap: break-word;
+  line-height: 1.5; /* Improved readability */
 }
 
 .bot-message {
   background-color: #e3f2fd;
   color: #333;
   align-self: flex-start;
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 8px; /* Slightly more rounded */
 }
 
 .user-message-container {
@@ -279,7 +282,7 @@
   background-color: #0077b6;
   color: #fff;
   align-self: flex-end;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 8px; /* Slightly more rounded */
 }
 
 .options-container {
@@ -293,12 +296,19 @@
   background-color: #fff;
   border: 1px solid #0077b6;
   color: #0077b6;
-  padding: 10px;
-  border-radius: 18px;
+  padding: 12px 15px; /* Increased padding */
+  border-radius: 22px; /* More rounded buttons */
   cursor: pointer;
   text-align: center;
-  transition: background-color 0.2s, color 0.2s;
-  font-size: 0.95rem;
+  transition: background-color 0.2s, color 0.2s, transform 0.1s ease; /* Added transform for subtle hover effect */
+  font-size: 0.98rem; /* Slightly larger font */
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05); /* Subtle shadow */
+}
+
+.option-button:hover {
+  background-color: #0077b6;
+  color: #fff;
+  transform: translateY(-1px); /* Lift effect on hover */
 }
 
 .option-button:hover {
@@ -352,11 +362,11 @@
 
 .policy-card {
   background-color: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 12px;
-  padding: 16px;
-  box-shadow: 0 2px 8px rgba(44, 62, 80, 0.08);
-  margin-top: 10px;
+  border: 1px solid #d0d0d0; /* Slightly darker border */
+  border-radius: 15px; /* More rounded cards */
+  padding: 20px; /* Increased padding */
+  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.12); /* Enhanced shadow */
+  margin-top: 12px;
 }
 
 .policy-card-body h3 {

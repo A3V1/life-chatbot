@@ -167,8 +167,8 @@ const ChatWidget = () => {
           <div className="avatar-circle" />
         </div>
         <div className="chatbot-title-group">
-          <div className="chatbot-title">LifeSecure Assistant</div>
-          <div className="chatbot-subtitle">How can I help?</div>
+          <div className="chatbot-title">Cogno Life Assistant</div>
+          {/* <div className="chatbot-subtitle">How can I help?</div> */}
         </div>
         <div className="chatbot-header-icons">
           <button className="icon-btn" onClick={toggleChat}>
@@ -186,7 +186,7 @@ const ChatWidget = () => {
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
               className="chatbot-input"
-              style={{ width: 'calc(100% - 24px)', marginBottom: '10px' }}
+              style={{ width: '100%', marginBottom: '10px' }}
             />
             <button type="submit" className="option-button" style={{ width: '100%' }}>
               Start Conversation

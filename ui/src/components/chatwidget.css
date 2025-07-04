@@ -173,7 +173,7 @@
 }
 .chatbot-input {
   flex: 1;
-  border: none;
+  border: 1px solid #121111; /* Softer border */
   border-radius: 20px;
   padding: 10px 16px;
   font-size: 1rem;

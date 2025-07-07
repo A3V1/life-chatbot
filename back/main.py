@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Any, Dict
 from cbot import ImprovedChatBot
 
 app = FastAPI(
@@ -23,12 +23,33 @@ app.add_middleware(
 
 class ChatRequest(BaseModel):
     phone_number: str = Field(..., description="The user's phone number, used as a unique identifier.")
-    query: Optional[str] = Field(None, description="The user's message to the chatbot. Send an empty string for the first message.")
+    name: Optional[str] = Field(None, description="The user's name.")
+    email: Optional[str] = Field(None, description="The user's email.")
+    query: Optional[Any] = Field(None, description="The user's message (str) or form data (dict).")
 
 class ChatResponse(BaseModel):
     answer: str
     options: Optional[List[str]] = None
     chat_history: Optional[List[dict]] = None
+    input_type: Optional[str] = None
+    slider_config: Optional[Dict[str, Any]] = None
+    quote_data: Optional[Dict[str, Any]] = None
+
+class QuotationRequest(BaseModel):
+    phone_number: str
+    dob: str
+    gender: str
+    nationality: str
+    marital_status: str
+    education: str
+    gst_applicable: bool
+    plan_option: str
+    coverage_required: int
+    premium_budget: Optional[int] = None
+    policy_term: str
+    premium_payment_term: str
+    premium_frequency: str
+    income_payout_frequency: str
 
 # --- API Endpoints ---
 
@@ -43,7 +64,11 @@ def chat(request: ChatRequest):
         raise HTTPException(status_code=400, detail="phone_number is required.")
 
     try:
-        bot = ImprovedChatBot(phone_number=request.phone_number)
+        bot = ImprovedChatBot(
+            phone_number=request.phone_number,
+            name=request.name,
+            email=request.email
+        )
         
         # If it's the first message (no query), we also send back the history.
         if not request.query:
@@ -74,14 +99,32 @@ def chat(request: ChatRequest):
 
         # For subsequent messages, just handle the query.
         response_data = bot.handle_message(request.query)
-        return {
-            "answer": response_data.get("answer", "Sorry, something went wrong."),
-            "options": response_data.get("options"),
-            "chat_history": [], # No need to send history on every turn
-        }
+        # Ensure chat_history is not sent on every turn to save bandwidth
+        response_data["chat_history"] = []
+        return response_data
     except Exception as e:
         print(f"An error occurred during chat: {e}")
         raise HTTPException(status_code=500, detail="An internal error occurred.")
+
+
+@app.post("/api/update_user_and_get_quote")
+def update_user_and_get_quote(request: QuotationRequest):
+    """
+    Updates user information and generates an insurance quote by calling the bot's method.
+    """
+    try:
+        print("Received quote form data:")
+        print(request.dict())
+
+        bot = ImprovedChatBot(phone_number=request.phone_number)
+        response = bot.update_profile_and_get_quote(request.dict())
+
+        print("Quote response:", response)
+        return response.get("quote_data")
+
+    except Exception as e:
+        print(f"An error occurred during quote generation: {e}")
+        raise HTTPException(status_code=500, detail="An internal error occurred during quote generation.")
 
 
 @app.get("/")

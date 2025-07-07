@@ -1,15 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import InsuranceQuotationForm from './InsuranceQuotationForm'; // Import the new component
 import './chatwidget.css';
 
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(true);
+  const [showQuotationForm, setShowQuotationForm] = useState(false); // New state
+  const [isFormVisible, setIsFormVisible] = useState(true);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showLogin, setShowLogin] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [sliderValues, setSliderValues] = useState({});
+  const [quoteDataForForm, setQuoteDataForForm] = useState(null); // To pass quote data to the form
+  const [formData, setFormData] = useState({});
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null); // New ref for the input field
   const fileInputRef = useRef(null);
@@ -28,12 +36,14 @@ const ChatWidget = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!phoneNumber) return;
+    if (!phoneNumber || !name) return;
 
     setIsTyping(true);
     try {
       const response = await axios.post('http://localhost:8000/chat', {
         phone_number: phoneNumber,
+        name: name,
+        email: email,
         query: "", // Send empty query to get history and welcome message
       });
 
@@ -48,6 +58,8 @@ const ChatWidget = () => {
         text: response.data.answer,
         sender: 'bot',
         options: response.data.options,
+        input_type: response.data.input_type,
+        slider_config: response.data.slider_config,
       };
 
       // Avoid duplicating the welcome message if it's already in the history
@@ -84,18 +96,34 @@ const ChatWidget = () => {
         query: text,
       });
 
-      const botResponse = {
-        id: `resp-${Date.now()}`,
-        text: response.data.answer,
-        sender: 'bot',
-        options: response.data.options,
-      };
-      setMessages((prevMessages) => {
-        const updatedMessages = [...prevMessages, botResponse];
-        // Ensure input is focused after bot response
-        setTimeout(focusInput, 0); // Use setTimeout to ensure focus after state update
-        return updatedMessages;
-      });
+      const botResponse = response.data;
+
+      // Check if the backend wants to show the multi-step form
+      if (botResponse.input_type === 'multi_step_form') {
+        setShowQuotationForm(true);
+        setIsFormVisible(true);
+        // Add a message to inform the user
+        const formMessage = {
+          id: `form-msg-${Date.now()}`,
+          text: botResponse.answer,
+          sender: 'bot',
+        };
+        setMessages((prevMessages) => [...prevMessages, formMessage]);
+      } else {
+        const message = {
+          id: `resp-${Date.now()}`,
+          text: botResponse.answer,
+          sender: 'bot',
+          options: botResponse.options,
+          input_type: botResponse.input_type,
+          slider_config: botResponse.slider_config,
+        };
+        setMessages((prevMessages) => {
+          const updatedMessages = [...prevMessages, message];
+          setTimeout(focusInput, 0);
+          return updatedMessages;
+        });
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       const botResponse = {
@@ -122,6 +150,50 @@ const ChatWidget = () => {
     } else {
       handleSendMessage(option);
     }
+  };
+
+  // This function is called by the InsuranceQuotationForm component when the user clicks "Generate Quote"
+  const handleQuoteRequest = async (currentFormData) => {
+    try {
+      const response = await axios.post('http://localhost:8000/api/update_user_and_get_quote', {
+        ...currentFormData,
+        phone_number: phoneNumber,
+      });
+
+      const quote = response.data;
+      const quoteMessage = `
+### Your Insurance Quote
+
+**Quote Number:** ${quote.quote_number}
+**Sum Assured:** ₹${quote.sum_assured.toLocaleString()}
+**Policy Term:** ${quote.policy_term} years
+**Payment Term:** ${quote.premium_payment_term} years
+**Base Premium:** ₹${quote.base_premium.toLocaleString()}
+**GST (18%):** ₹${quote.gst.toLocaleString()}
+**Total Premium (${quote.premium_frequency}):** ₹${quote.total_premium.toLocaleString()}
+
+**Note:** This is an estimate. Final premium depends on underwriting and medical examination.
+      `;
+      const botMessage = {
+        id: `resp-${Date.now()}`,
+        text: quoteMessage,
+        sender: 'bot',
+      };
+      setMessages((prevMessages) => [...prevMessages, botMessage]);
+      setShowQuotationForm(false);
+    } catch (error) {
+      console.error('Error getting quote:', error);
+      const botResponse = {
+        id: `err-${Date.now()}`,
+        text: 'Sorry, something went wrong while generating your quote. Please try again.',
+        sender: 'bot',
+      };
+      setMessages((prevMessages) => [...prevMessages, botResponse]);
+    }
+  };
+
+  const handleSliderChange = (messageId, value) => {
+    setSliderValues(prev => ({ ...prev, [messageId]: value }));
   };
 
   const handleInputChange = (e) => {
@@ -176,7 +248,12 @@ const ChatWidget = () => {
       setInputValue('');
       setIsTyping(false);
       setShowLogin(true);
+      setShowQuotationForm(false); // Reset form visibility
+      setIsFormVisible(true);
+      setQuoteDataForForm(null); // Reset quote data
       setPhoneNumber('');
+      setName('');
+      setEmail('');
     }
     setIsOpen(!isOpen);
   };
@@ -210,10 +287,28 @@ const ChatWidget = () => {
         <div className="login-container">
           <form onSubmit={handleLogin} style={{ width: '100%' }}>
             <input
+              type="text"
+              placeholder="Enter your name *"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="chatbot-input"
+              style={{ width: '100%', marginBottom: '10px' }}
+              required
+            />
+            <input
               type="tel"
-              placeholder="Enter your phone number"
+              placeholder="Enter your phone number *"
               value={phoneNumber}
               onChange={(e) => setPhoneNumber(e.target.value)}
+              className="chatbot-input"
+              style={{ width: '100%', marginBottom: '10px' }}
+              required
+            />
+            <input
+              type="email"
+              placeholder="Enter your email "
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="chatbot-input"
               style={{ width: '100%', marginBottom: '10px' }}
             />
@@ -224,13 +319,74 @@ const ChatWidget = () => {
         </div>
       ) : (
         <>
+          {showQuotationForm && (
+            <div className="form-section">
+              <div className="form-header" onClick={() => setIsFormVisible(!isFormVisible)}>
+                <span>Insurance Quotation</span>
+                <button className="icon-btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+                    <path d="M0 0h24v24H0z" fill="none"/>
+                    <path d={isFormVisible ? "M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" : "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"}/>
+                  </svg>
+                </button>
+              </div>
+              {isFormVisible && (
+                <div className="form-container-collapsible">
+                  <InsuranceQuotationForm
+                    onQuoteGenerated={handleQuoteRequest}
+                    initialQuoteData={quoteDataForForm}
+                    formData={formData}
+                    setFormData={setFormData}
+                  />
+                </div>
+              )}
+            </div>
+          )}
           <div className="chatbot-messages">
             {messages.map((message) => (
               <div key={message.id} className={`message-container ${message.sender === 'user' ? 'user-message-container' : ''}`}>
                 <div className={`message ${message.sender}-message`}>
                   <ReactMarkdown>{message.text}</ReactMarkdown>
                 </div>
-                {message.options && !message.customInput && (
+                {message.input_type === 'slider' && message.slider_config && (
+                  <div className="slider-container">
+                    <div className="slider-label">
+                      {message.slider_config.label}: <strong>₹{Number(sliderValues[message.id] || message.slider_config.default).toLocaleString('en-IN')}</strong>
+                    </div>
+                    <input
+                      type="range"
+                      min={message.slider_config.min}
+                      max={message.slider_config.max}
+                      step={message.slider_config.step}
+                      defaultValue={sliderValues[message.id] || message.slider_config.default}
+                      onChange={(e) => handleSliderChange(message.id, e.target.value)}
+                      className="chatbot-slider"
+                    />
+                    <button
+                      className="option-button"
+                      onClick={() => handleSendMessage(sliderValues[message.id] || message.slider_config.default)}
+                    >
+                      Confirm Amount
+                    </button>
+                  </div>
+                )}
+                {message.options && message.input_type === 'dropdown' && (
+                  <div className="options-container">
+                    <select
+                      className="chatbot-input"
+                      onChange={(e) => handleOptionClick(e.target.value)}
+                      style={{ width: '100%', marginBottom: '10px' }}
+                    >
+                      <option value="">Select an option</option>
+                      {message.options.map((option, index) => (
+                        <option key={index} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {message.options && message.input_type !== 'dropdown' && !message.customInput && (
                   <div className="options-container">
                     {message.options.map((option, index) => (
                       <button key={index} className="option-button" onClick={() => handleOptionClick(option)}>

@@ -12,29 +12,30 @@ llm = ChatOpenAI(
     openai_api_key=os.getenv("OPENROUTER_API_KEY"),
     openai_api_base="https://openrouter.ai/api/v1",
     temperature=0.7,
+    max_tokens=150,  # Reduced token limit
 )
 vectorstore = upload_vectorstore("life-insurance")
-retriever = vectorstore.as_retriever()
+retriever = vectorstore.as_retriever(search_kwargs={"k": 1})
 
 # --- Prompt for the Recommendation Phase ---
 RECOMMENDATION_PROMPT = PromptTemplate(
-    template="""You are a helpful insurance assistant. Based on the user's profile and the provided policy data, recommend the top two most suitable policies. For each policy, provide a compelling one-line description.
+    template="""You are a helpful insurance advisor. Based on the following context and user profile, recommend ONE best-fit policy.
 
-User Info:
-{user_info}
-
-Relevant Policies:
+Context:
 {context}
+
+User Profile:
+{user_info}
 
 User Query:
 {query}
 
-Based on your profile, here are two policies I recommend:
-
-1.  **[Policy Name 1]**: [One-line description of policy 1].
-2.  **[Policy Name 2]**: [One-line description of policy 2].
-
-What would you like to do next?
+Respond ONLY in valid JSON like this:
+{{
+  "name": "Policy Name",
+  "policy_id": "POL12345",
+  "description": "Short reason why this policy is suitable for the user"
+}}
 """,
     input_variables=["user_info", "context", "query"],
 )

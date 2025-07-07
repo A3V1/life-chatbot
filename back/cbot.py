@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import Any, Dict
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferWindowMemory
 from langchain_community.chat_message_histories import ChatMessageHistory
 from sqlconnect import (
     get_user_session,
@@ -9,15 +9,13 @@ from sqlconnect import (
     update_user_context,
 )
 from handlers.onboarding import (
-    handle_get_primary_need,
-    # handle_get_insurance_goal,
-    handle_collect_age,
-    handle_collect_income,
-    handle_collect_budget,
-    handle_collect_term_length,
-    handle_collect_coverage,
+    handle_existing_policy,
+    handle_employment_status,
+    handle_annual_income,
 )
-from handlers.recommendation import handle_recommendation_phase, _is_application_button
+from handlers.recommendation import (
+    handle_recommendation_phase,
+)
 from handlers.closing import (
     handle_application,
     handle_contact_capture,
@@ -27,14 +25,15 @@ from handlers.general_qa import handle_general_questions
 from utils import is_general_question
 
 class ImprovedChatBot:
-    def __init__(self, phone_number: str):
-        session_data = get_user_session(phone_number)
+    def __init__(self, phone_number: str, name: str = None, email: str = None):
+        session_data = get_user_session(phone_number, name, email)
         self.user_id = session_data["user_id"]
         self.context = session_data or {}
-        self.memory = ConversationBufferMemory(
+        self.memory = ConversationBufferWindowMemory(
             chat_memory=ChatMessageHistory(),
             memory_key="chat_history",
             return_messages=True,
+            k=5  # Keep the last 5 interactions
         )
         self._load_chat_history()
 
@@ -49,49 +48,73 @@ class ImprovedChatBot:
 
     def _update_context(self, updates: Dict[str, Any]):
         self.context.update(updates)
-        # Also persist the chat history from memory into the context
-        self.context["chat_history"] = [msg.dict() for msg in self.memory.buffer_as_messages]
         
-        db_updates = {k: (json.dumps(v) if isinstance(v, (list, dict)) else v) for k, v in self.context.items()}
+        # Persist only the changes to the database
+        db_updates = updates.copy()
+
+        # Add chat history to the updates if it has changed
+        self.context["chat_history"] = [msg.dict() for msg in self.memory.buffer_as_messages]
+        db_updates["chat_history"] = self.context["chat_history"]
+
+        # --- CONTEXT TO DB MAPPING ---
+        # Map the application key 'policy_term' to the database column 'term_length'
+        if 'policy_term' in db_updates:
+            db_updates['term_length'] = db_updates.pop('policy_term')
+        # --- END MAPPING ---
+
         update_user_context(self.user_id, db_updates)
 
     def _validate_context_completeness(self) -> bool:
         """Ensure all required fields are collected before recommendations"""
-        required_fields = ['primary_need', 'age', 'income', 'budget', 'term_length', 'coverage_required']
-        return all(field in self.context for field in required_fields)
+        # Onboarding validation
+        onboarding_fields = ['existing_policy', 'employment_status', 'annual_income']
+        if self.context.get("context_state") in ["recommendation_phase"]:
+            return all(field in self.context for field in onboarding_fields)
 
-    def handle_message(self, query: str) -> Dict[str, Any]:
-        current_state = self.context.get("context_state", "get_primary_need")
+        # Full validation before quote generation
+        full_fields = onboarding_fields + [
+            'dob', 'gender', 'nationality', 'marital_status', 
+            'education', 'gst_applicable'
+        ]
+        return all(field in self.context for field in full_fields)
+
+    def handle_message(self, query: Any) -> Dict[str, Any]:
+        # --- Existing text-based message handling ---
+        current_state = self.context.get("context_state", "existing_policy")
         
-        # Define keywords that are specific to certain states and not general questions
         specific_keywords_map = {
             "recommendation_given_phase": ["compare", "details for", "apply for", "get more details"],
-            # Add other states and their specific keywords here if needed
         }
         specific_keywords = specific_keywords_map.get(current_state, [])
 
         try:
-            # Use the enhanced function to decide the routing
-            logging.debug(f"Routing query: '{query}' in state: '{current_state}' with specific keywords: {specific_keywords}")
             is_general = is_general_question(query, specific_keywords=specific_keywords)
-            logging.debug(f"is_general_question returned: {is_general}")
+            logging.debug(f"Routing query: '{query}' in state: '{current_state}'. Is general: {is_general}")
 
             if is_general:
-                logging.debug("Routing to handle_general_questions.")
                 response = handle_general_questions(self, query)
             else:
-                logging.debug("Routing to _handle_state.")
-                # Proceed with state-based handling
                 response = self._handle_state(current_state, query)
+                
+                if not response:
+                    new_state = self.context.get("context_state")
+                    if new_state != current_state:
+                        logging.debug(f"Handler returned empty, transitioning to new state: {new_state}")
+                        response = self._handle_state(new_state, "")
 
             if query:
-                log_chat_message(self.user_id, "user", query)
+                # If the query is a dictionary (form submission), convert it to a string for logging
+                if isinstance(query, dict):
+                    log_message = json.dumps(query)
+                    self.memory.chat_memory.add_user_message(log_message)
+                else:
+                    log_message = query
+                    self.memory.chat_memory.add_user_message(query)
+                
+                log_chat_message(self.user_id, "user", log_message)
+
             if response and response.get("answer"):
                 log_chat_message(self.user_id, "bot", response["answer"])
-            
-            # Manually update memory after handling
-            self.memory.chat_memory.add_user_message(query)
-            if response and response.get("answer"):
                 self.memory.chat_memory.add_ai_message(response["answer"])
 
             return response
@@ -103,19 +126,91 @@ class ImprovedChatBot:
                 "options": ["Start Over", "Get Policy Recommendations", "Speak to an Agent"]
             }
 
-    def _handle_state(self, state: str, query: str) -> Dict[str, Any]:
+    def _handle_state(self, state: str, query: Any) -> Dict[str, Any]:
         handlers = {
-            "get_primary_need": handle_get_primary_need,
-            # "get_insurance_goal": handle_get_insurance_goal,
-            "collect_age": handle_collect_age,
-            "collect_income": handle_collect_income,
-            "collect_budget": handle_collect_budget,
-            "collect_term_length": handle_collect_term_length,
-            "collect_coverage": handle_collect_coverage,
+            # Onboarding
+            "existing_policy": handle_existing_policy,
+            "collect_employment_status": handle_employment_status,
+            "collect_annual_income": handle_annual_income,
+            
+            # Recommendation
+            "recommendation_phase": handle_recommendation_phase,
             "recommendation_given_phase": handle_recommendation_phase,
+
+            "generate_premium_quotation": lambda bot, query: {
+                "answer": "Please fill out the form to get your quote.",
+                "input_type": "multi_step_form"
+            },
+
+            # Closing
             "application": handle_application,
             "contact_capture": handle_contact_capture,
             "email_capture": handle_email_capture,
         }
-        handler = handlers.get(state, handle_get_primary_need)
+        handler = handlers.get(state, handle_existing_policy)
         return handler(self, query)
+
+    def get_handler_for_state(self, state: str):
+        """Returns the handler function for a given state."""
+        handlers = {
+            "existing_policy": handle_existing_policy,
+            "collect_employment_status": handle_employment_status,
+            "collect_annual_income": handle_annual_income,
+            "recommendation_phase": handle_recommendation_phase,
+            "recommendation_given_phase": handle_recommendation_phase,
+            "generate_premium_quotation": lambda bot, query: {
+                "answer": "Please fill out the form to get your quote.",
+                "input_type": "multi_step_form"
+            },
+            "application": handle_application,
+            "contact_capture": handle_contact_capture,
+            "email_capture": handle_email_capture,
+        }
+        return handlers.get(state)
+
+    def update_profile_and_get_quote(self, form_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Updates user profile from form, generates a quote, and saves it.
+        """
+        # 1. Update user_info and user_context
+        user_info_keys = [
+            "dob", "gender", "nationality", "marital_status",
+            "education", "gst_applicable", "employment_status", "annual_income", "existing_policy"
+        ]
+        user_info_data = {k: form_data[k] for k in user_info_keys if k in form_data}
+        user_context_data = {k: form_data[k] for k in form_data if k not in user_info_keys}
+
+        if user_info_data:
+            from sqlconnect import update_user_info
+            update_user_info(self.user_id, user_info_data)
+        
+        if user_context_data:
+            self._update_context(user_context_data)
+
+        # 2. Reload context
+        self.context = get_user_session(self.context["phone_number"])
+
+        # 3. Generate quote
+        from handlers.quotation import QuotationHandler
+        from sqlconnect import get_mysql_connection, save_quotation_details
+        db_conn = get_mysql_connection()
+        quotation_handler = QuotationHandler(db_conn, self.user_id, self.context)
+        response = quotation_handler.handle()
+        db_conn.close()
+
+        # 4. Save the generated quote to the new table
+        if response.get("quote_data"):
+            # The quote_data might be nested, let's ensure we get the flat dictionary
+            flat_quote_data = response["quote_data"].get("quote_data", response["quote_data"])
+            
+            # Add form data that might not be in the quote response but is in the table
+            for key in form_data:
+                if key not in flat_quote_data:
+                    flat_quote_data[key] = form_data[key]
+            
+            save_quotation_details(self.user_id, flat_quote_data)
+            
+            # Also update the user_context with the quote details
+            self._update_context(flat_quote_data)
+
+        return response

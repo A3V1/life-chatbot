@@ -1,6 +1,8 @@
 import re
 import logging
 from typing import Optional
+from datetime import datetime
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +21,20 @@ def extract_numeric_value(text: str, field_name: str) -> Optional[int]:
         match = re.search(r"(\d+\.?\d*)", clean_text)
         if match:
             value = int(float(match.group(1)) * multiplier)
-            if field_name == "age": return value if 18 <= value <= 80 else None
-            if field_name == "income": return value if value >= 50000 else None
-            if field_name == "budget": return value if value >= 500 else None
-            if field_name == "term": return value if 1 <= value <= 50 else None
-            if field_name == "coverage": return value if value >= 100000 else None
+            # Apply specific validations based on field name
+            if field_name == "age":
+                return value if 18 <= value <= 80 else None
+            if field_name == "income":
+                return value if value >= 50000 else None
+            if field_name == "budget":
+                return value if value >= 500 else None
+            if field_name == "term":
+                return value if 1 <= value <= 50 else None
+            if field_name == "coverage":
+                return value if value >= 100000 else None
+            
+            # If field_name is generic (like 'amount'), return the value directly
+            return value
     except (ValueError, AttributeError) as e:
         logger.warning(f"Could not extract numeric value for '{field_name}' from text: '{text}'. Error: {e}")
     return None
@@ -33,6 +44,8 @@ def is_general_question(query: str, specific_keywords: list[str] = None) -> bool
     Detects if a user's query is a general question using boundary-aware checks.
     It ignores specific command keywords relevant to the current state.
     """
+    if not isinstance(query, str):
+        return False
     lower_query = query.lower().strip()
     specific_keywords = specific_keywords or []
 
@@ -66,3 +79,9 @@ def is_general_question(query: str, specific_keywords: list[str] = None) -> bool
 
     logger.debug(f"Query '{lower_query}' did not match any general question criteria.")
     return False
+
+def generate_quote_number():
+    """Generates a unique quote number."""
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    random_digits = random.randint(1000, 9999)
+    return f"QUOTE-{timestamp}-{random_digits}"

@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 from langchain_core.prompts import PromptTemplate
 from config import llm, retriever, RECOMMENDATION_PROMPT
 from handlers.general_qa import handle_general_questions
+from sqlconnect import get_policy_by_id, get_policy_by_name
 from utils import clean_button_input
 
 logger = logging.getLogger(__name__)
@@ -27,44 +28,41 @@ def _clean_llm_response(response_content: str) -> str:
     
     return cleaned_content.strip()
 
-def _is_application_button(query: str) -> bool:
-    """Check if user clicked an application button"""
-    return "apply for" in query.lower()
+def _is_get_quotation_button(query: str) -> bool:
+    """Check if user clicked get quotation button"""
+    return "get quotation" in query.lower()
 
-def _get_shown_recommendations(bot) -> list:
-    """Safely retrieves shown_recommendations from context."""
-    return bot.context.get("shown_recommendations", [])
+def _is_show_details_button(query: str) -> bool:
+    """Check if user clicked show details button"""
+    return "show details" in query.lower() or "more details" in query.lower()
 
-def _extract_policy_id_from_button(query: str, bot) -> Optional[str]:
-    shown = _get_shown_recommendations(bot)
-    for item in shown:
-        if item["name"].lower() in query.lower():
-            return item["policy_id"]
-    return None
+def _is_ask_general_questions_button(query: str) -> bool:
+    """Check if user clicked ask general questions button"""
+    return "ask general questions" in query.lower() or "general questions" in query.lower()
 
 def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
     """Handles the initial recommendation and subsequent user interactions."""
     cleaned_query = clean_button_input(query)
 
     if bot.context.get("context_state") == "recommendation_given_phase":
-        if _is_application_button(query):
-            policy_id = _extract_policy_id_from_button(query, bot)
+        if _is_get_quotation_button(query):
+            # The policy is already selected, just transition the state
             bot._update_context({
-                "selected_policy": policy_id,
-                "context_state": "generate_premium_quotation" # Transition directly to the form trigger
+                "context_state": "generate_premium_quotation"  # Transition to the form trigger
             })
-            # The handler for 'generate_premium_quotation' will now trigger the form
-            return {} # Return empty to trigger the state transition
-        
-        if "get more details" in query.lower():
+            return {}  # The handler for this state will trigger the form
+        if _is_show_details_button(query):
             return _get_more_details(bot)
         
-        # After providing details, offer the apply button again.
+        if _is_ask_general_questions_button(query):
+            # Transition to general questions phase         
+            return {"answer": "Sure! What would you like to know?"}
+        
+        # After providing details, offer the same options again
         if bot.context.get("last_action") == "provided_details":
-             options = [f"Apply for {item['name']}" for item in _get_shown_recommendations(bot)]
-             options.append("Ask another question")
-             bot.context["last_action"] = None # Reset flag
-             return {"answer": "What would you like to do next?", "options": options}
+            options = ["Get Quotation", "Show Details"]
+            bot.context["last_action"] = None  # Reset flag
+            return {"answer": "What would you like to do next?", "options": options}
 
         return handle_general_questions(bot, query)
 
@@ -90,7 +88,6 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
         "annual_income": bot.context.get("annual_income"),
         "employment_status": bot.context.get("employment_status")
     }
-    # user_info = json.dumps(user_info_dict)
 
     prompt = RECOMMENDATION_PROMPT.format(
         context=context_str,
@@ -102,16 +99,32 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
     logger.debug(f"Prompt length: {len(prompt)} chars")
 
     llm_response = llm.invoke(prompt)
-    bot._update_context({
-        "context_state": "recommendation_given_phase",  # Wait for user to apply or ask questions
-        "shown_recommendations": []
-    })
-
+    
     try:
         cleaned_response = _clean_llm_response(llm_response.content)
         structured_policy = json.loads(cleaned_response)
-        bot.context["shown_recommendations"] = [structured_policy]
-        options = [f"Apply for {structured_policy['name']}", "Get More Details"]
+        
+        policy_name = structured_policy.get('name')
+        if not policy_name:
+            raise KeyError("LLM response did not include a policy name.")
+
+        # Fetch the policy from the database to get the correct policy_id
+        db_policy = get_policy_by_name(policy_name)
+        if not db_policy:
+            logger.error(f"Policy '{policy_name}' recommended by LLM not found in the database.")
+            return {"answer": "I found a suitable policy, but I'm having trouble retrieving its details. Please try again."}
+
+        policy_id = db_policy.get('policy_id')
+        
+        bot._update_context({
+            "context_state": "recommendation_given_phase",
+            "shown_recommendations": [structured_policy], # Still show the LLM's description
+            "selected_policy": policy_id,
+            "selected_policy_type": policy_name
+        })
+        
+        # Provide the two specific options you want
+        options = ["Get Quotation", "Show Details", "Ask General Questions"]
         
         answer = f"Based on your profile, I recommend the **{structured_policy['name']}**."
         if structured_policy.get('description'):
@@ -120,14 +133,49 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
         return {"answer": answer, "options": options}
     except (json.JSONDecodeError, KeyError) as e:
         logger.error(f"Error processing recommendation response: {e}\nResponse: {llm_response.content}")
-        return {"answer": "I'm having trouble processing the recommendation details. Could you please try asking again?"}
+        return {"answer": "I'm ware having trouble processing the recommendation details. Could you please try asking again?"}
 
 def _get_more_details(bot) -> Dict[str, Any]:
-    """Asks the user to clarify which policy they want details about."""
-    shown = _get_shown_recommendations(bot)
-    options = [f"Details for {item['name']}" for item in shown]
-    bot._update_context({"last_action": "provided_details"}) # Set flag
-    return {
-        "answer": "Which policy would you like to get more details about?",
-        "options": options
-    }
+    """Provides more details about the recommended policy from the database."""
+    policy_id = bot.context.get("selected_policy")
+    if not policy_id:
+        return {"answer": "I'm sorry, I don't have a selected policy to show details for."}
+
+    # Fetch details directly from the database
+    policy_details = get_policy_by_id(policy_id)
+    if not policy_details:
+        logger.warning(f"Could not find details for policy ID: {policy_id}")
+        return {"answer": f"Sorry, I couldn't find the details for that policy."}
+
+    # Define which details to show and in what order
+    display_keys = [
+        ("policy_name", "Policy Name"),
+        ("provider_name", "Provider"),
+        ("policy_type", "Type"),
+        ("coverage_max", "Maximum Coverage"),
+        ("premium_max", "Maximum Premium"),
+        ("age_max", "Maximum Entry Age"),
+        ("claim_settlement_ratio", "Claim Settlement Ratio"),
+        ("tax_benefits", "Tax Benefits"),
+        ("benefits", "Benefits"),
+    ]
+    
+    details_list = []
+    for key, title in display_keys:
+        if key in policy_details and policy_details[key] is not None:
+            value = policy_details[key]
+            # Format currency values
+            if 'coverage' in key or 'premium' in key:
+                if isinstance(value, (int, float)):
+                    value = f"₹{value:,.0f}"
+            details_list.append(f"**{title}**: {value}")
+    
+    details_str = "\n".join(details_list)
+    
+    answer = (
+        f"Here are the key details for **{policy_details.get('policy_name', 'N/A')}**:\n\n"
+        f"{details_str}"
+    )
+
+    bot._update_context({"last_action": "provided_details"})
+    return {"answer": answer}

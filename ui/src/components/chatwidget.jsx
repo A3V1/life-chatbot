@@ -2,11 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
 import InsuranceQuotationForm from './InsuranceQuotationForm'; // Import the new component
+import BuyPage from './BuyPage'; // Import the new BuyPage component
 import './chatwidget.css';
 
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(true);
   const [showQuotationForm, setShowQuotationForm] = useState(false); // New state
+  const [showBuyPage, setShowBuyPage] = useState(false); // New state for the buy page
   const [isFormVisible, setIsFormVisible] = useState(true);
   const [messages, setMessages] = useState([]);
   const [inputValue, setInputValue] = useState('');
@@ -161,7 +163,7 @@ const ChatWidget = () => {
       });
 
       const quote = response.data;
-      const quoteMessage = `
+      const quoteMessageText = `
 ### Your Insurance Quote
 
 **Quote Number:** ${quote.quote_number}
@@ -176,8 +178,9 @@ const ChatWidget = () => {
       `;
       const botMessage = {
         id: `resp-${Date.now()}`,
-        text: quoteMessage,
+        text: quoteMessageText,
         sender: 'bot',
+        actions: quote.actions, // Pass actions to the message
       };
       setMessages((prevMessages) => [...prevMessages, botMessage]);
       setShowQuotationForm(false);
@@ -190,6 +193,12 @@ const ChatWidget = () => {
         sender: 'bot',
       };
       setMessages((prevMessages) => [...prevMessages, botResponse]);
+    }
+  };
+
+  const handleActionClick = (action) => {
+    if (action === 'Proceed to Buy') {
+      setShowBuyPage(true);
     }
   };
 
@@ -253,6 +262,7 @@ const ChatWidget = () => {
       setIsFormVisible(true);
       setQuoteDataForForm(null); // Reset quote data
       setFormData({}); // Reset form data
+      setShowBuyPage(false); // Reset buy page visibility
       setPhoneNumber('');
       setName('');
       setEmail('');
@@ -264,6 +274,14 @@ const ChatWidget = () => {
     return (
       <div className="chatbot-fab" onClick={toggleChat}>
         <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0z" fill="none"/><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+      </div>
+    );
+  }
+
+  if (showBuyPage) {
+    return (
+      <div className="chatbot-container">
+        <BuyPage onBack={() => setShowBuyPage(false)} />
       </div>
     );
   }
@@ -351,6 +369,15 @@ const ChatWidget = () => {
                 <div className={`message ${message.sender}-message`}>
                   <ReactMarkdown>{message.text}</ReactMarkdown>
                 </div>
+                {message.actions && (
+                  <div className="options-container">
+                    {message.actions.map((action, index) => (
+                      <button key={index} className="option-button" onClick={() => handleActionClick(action)}>
+                        {action}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {message.input_type === 'slider' && message.slider_config && (
                   <div className="slider-container">
                     <div className="slider-label">

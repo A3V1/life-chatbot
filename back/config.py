@@ -34,7 +34,6 @@ User Query:
 Respond ONLY in valid JSON like this:
 {{
   "name": "Policy Name",
-  "policy_id": "POL12345",
   "description": "Short reason why this policy is suitable for the user"
 }}
 """,

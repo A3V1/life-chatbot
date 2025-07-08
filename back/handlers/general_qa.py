@@ -9,7 +9,7 @@ def route_general_question(bot, query: str, intent: str = "general_qa") -> Dict[
     Routes the user's general question to the appropriate handler based on intent.
     """
     state_before_diversion = bot.context.get("context_state")
-    bot._update_context({
+    bot._update_context({  
         "state_before_diversion": state_before_diversion,
         "last_user_query": query,
         "user_intent": intent,

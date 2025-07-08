@@ -106,5 +106,6 @@ class QuotationHandler:
 
         return {
             "answer": answer_text,
-            "quote_data": quote_data
+            "quote_data": quote_data,
+            "actions": ["Proceed to Buy"]
         }

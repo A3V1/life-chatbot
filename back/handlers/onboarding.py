@@ -37,7 +37,7 @@ def handle_employment_status(bot, query: str) -> Dict[str, Any]:
     return {
         "answer": "What is your current employment status?",
         "options": ["Salaried", "Self-Employed", "Other"],
-        "input_type": "dropdown"  # Specify dropdown for the frontend
+        # "input_type": "dropdown"  # Specify dropdown for the frontend
     }
 
 def handle_annual_income(bot, query: str) -> Dict[str, Any]:
@@ -72,5 +72,5 @@ def handle_annual_income(bot, query: str) -> Dict[str, Any]:
     return {
         "answer": "What is your approximate annual income?",
         "options": ["Less than 5 Lakhs", "5-10 Lakhs", "10-20 Lakhs", "20+ Lakhs"],
-        "input_type": "dropdown"  # Specify dropdown for the frontend
+        # "input_type": "dropdown"  # Specify dropdown for the frontend
     }

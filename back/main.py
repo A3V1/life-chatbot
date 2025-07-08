@@ -119,8 +119,11 @@ def update_user_and_get_quote(request: QuotationRequest):
         bot = ImprovedChatBot(phone_number=request.phone_number)
         response = bot.update_profile_and_get_quote(request.dict())
 
-        print("Quote response:", response)
-        return response.get("quote_data")
+        quote_data = response.get("quote_data", {})
+        quote_data["actions"] = response.get("actions", [])
+
+        print("Quote response:", quote_data)
+        return quote_data
 
     except Exception as e:
         print(f"An error occurred during quote generation: {e}")

@@ -71,18 +71,22 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
     if not bot._validate_context_completeness():
         return {"answer": "I need a bit more information to give you a recommendation."}
 
-    search_query = f"insurance for {bot.context.get('employment_status')} with annual income {bot.context.get('annual_income')}"
+    search_query = f"insurance for person {bot.context.get('existing_policy')} and {bot.context.get('employment_status')} with annual income {bot.context.get('annual_income')}"
     docs = retriever.invoke(search_query)
     
     if not docs:
-        return {"answer": "Sorry, I couldn't find any policies matching your profile."}
+        logger.warning(f"No policies found for query: '{search_query}'. Falling back to generic search.")
+        docs = retriever.invoke("insurance policy") # Fallback query
+        if not docs:
+            logger.error("Fallback failed: No policies found in the vector store at all.")
+            return {"answer": "I'm sorry, I couldn't find any policies right now. Please try again later."}
 
     top_policy = docs[0]
     logging.debug(f"Retrieved document: {top_policy}")
     # Truncate the context to avoid exceeding token limits
     context_str = top_policy.page_content[:250]  # ~125 tokens
     user_info_dict = {
-        "age": bot.context.get("age"),
+        "existing_policy": bot.context.get("existing_policy"),
         "annual_income": bot.context.get("annual_income"),
         "employment_status": bot.context.get("employment_status")
     }

@@ -181,6 +181,7 @@ const ChatWidget = () => {
       };
       setMessages((prevMessages) => [...prevMessages, botMessage]);
       setShowQuotationForm(false);
+      setFormData({}); // Reset form data
     } catch (error) {
       console.error('Error getting quote:', error);
       const botResponse = {
@@ -251,6 +252,7 @@ const ChatWidget = () => {
       setShowQuotationForm(false); // Reset form visibility
       setIsFormVisible(true);
       setQuoteDataForForm(null); // Reset quote data
+      setFormData({}); // Reset form data
       setPhoneNumber('');
       setName('');
       setEmail('');
@@ -261,7 +263,7 @@ const ChatWidget = () => {
   if (!isOpen) {
     return (
       <div className="chatbot-fab" onClick={toggleChat}>
-        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#FFFFFF"><path d="M0 0h24v24H0z" fill="none"/><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0z" fill="none"/><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
       </div>
     );
   }
@@ -278,7 +280,7 @@ const ChatWidget = () => {
         </div>
         <div className="chatbot-header-icons">
           <button className="icon-btn" onClick={toggleChat}>
-            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#FFFFFF"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0z" fill="none"/><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
           </button>
         </div>
       </div>
@@ -324,22 +326,23 @@ const ChatWidget = () => {
               <div className="form-header" onClick={() => setIsFormVisible(!isFormVisible)}>
                 <span>Insurance Quotation</span>
                 <button className="icon-btn">
-                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#000000">
+                  <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px">
                     <path d="M0 0h24v24H0z" fill="none"/>
                     <path d={isFormVisible ? "M7.41 15.41L12 10.83l4.59 4.58L18 14l-6-6-6 6z" : "M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6z"}/>
                   </svg>
                 </button>
               </div>
-              {isFormVisible && (
-                <div className="form-container-collapsible">
-                  <InsuranceQuotationForm
-                    onQuoteGenerated={handleQuoteRequest}
-                    initialQuoteData={quoteDataForForm}
-                    formData={formData}
-                    setFormData={setFormData}
-                  />
-                </div>
-              )}
+              <div
+                className="form-container-collapsible"
+                style={{ display: isFormVisible ? 'block' : 'none' }}
+              >
+                <InsuranceQuotationForm
+                  onQuoteGenerated={handleQuoteRequest}
+                  initialQuoteData={quoteDataForForm}
+                  formData={formData}
+                  setFormData={setFormData}
+                />
+              </div>
             </div>
           )}
           <div className="chatbot-messages">
@@ -441,7 +444,7 @@ const ChatWidget = () => {
               onChange={handleFileChange}
             />
             <button className="input-attach-btn" title="Attach File" onClick={handleFileAttach}>
-              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#5f6368"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0V0z" fill="none"/><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
             </button>
             <input
               className="chatbot-input"
@@ -454,7 +457,7 @@ const ChatWidget = () => {
               ref={inputRef}
             />
             <button className="input-send-btn" title="Send" onClick={handleSendClick} disabled={isTyping}>
-                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px" fill="#FFFFFF"><path d="M0 0h24v24H0z" fill="none"/><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 0 24 24" width="24px"><path d="M0 0h24v24H0z" fill="none"/><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </button>
           </div>
         </>

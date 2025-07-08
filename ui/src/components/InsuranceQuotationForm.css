@@ -30,7 +30,7 @@
 }
 
 .form-header {
-  background: linear-gradient(to right, #151424, #6366f1);
+  background: linear-gradient(to right, #151424, #3b82f6);
   color: white;
   /* padding: 0.5rem; */
 }
@@ -63,16 +63,20 @@
 .step-dots {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
 }
 
 .step-dot {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 0.5rem;
+  height: 0.5rem;
   border-radius: 9999px;
+  transition: all 0.2s ease-in-out;
 }
 
 .step-dot.active {
   background-color: #3b82f6;
+  width: 0.75rem;
+  height: 0.75rem;
 }
 
 .step-dot.inactive {
@@ -86,22 +90,24 @@
   padding: 0.75rem 0.75rem;
   border-radius: 0.5rem;
   font-weight: 500;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
 }
 
 .nav-button:disabled {
-  background-color: #d1d5db;
-  color: #6b7280;
+  background-color: #e5e7eb;
+  color: #9ca3af;
   cursor: not-allowed;
 }
 
 .back-button {
-  background-color: #4b5563;
-  color: white;
+  background-color: #f3f4f6;
+  color: #4b5563;
 }
 
 .back-button:hover:not(:disabled) {
-  background-color: #374151;
+  background-color: #e5e7eb;
 }
 
 .next-button {
@@ -109,7 +115,7 @@
   color: white;
 }
 
-.next-button:hover {
+.next-button:hover:not(:disabled) {
   background-color: #2563eb;
 }
 

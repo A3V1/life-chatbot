@@ -41,7 +41,7 @@ class QuotationHandler:
             premium_payment_term_val = policy_term_val
 
         premium_inputs = {
-            "coverage": final_context.get("coverage_and_premium"),
+            "coverage": final_context.get("coverage_required"),
             "budget": final_context.get("premium_budget"),
             "plan_option": final_context.get("plan_option") or final_context.get("plan_type"),
             "policy_term": policy_term_val,
@@ -52,8 +52,8 @@ class QuotationHandler:
         logger.debug(f"Inputs for premium calculation: {premium_inputs}")
 
         required_keys = ["plan_option", "policy_term", "premium_payment_term", "payout_frequency", "dob"]
-        missing_keys = [k for k in required_keys if not final_context.get(k)]
-        has_financial_goal = final_context.get("coverage_and_premium") or final_context.get("premium_budget")
+        missing_keys = [k for k in required_keys if not premium_inputs.get(k)]
+        has_financial_goal = final_context.get("coverage_required") or final_context.get("premium_budget")
 
         if missing_keys or not has_financial_goal:
             # Map plan_option to plan_type for logging
@@ -63,7 +63,8 @@ class QuotationHandler:
 
         premium_data = calculate_premium(**premium_inputs)
         if "error" in premium_data:
-            return {"answer": f"Error calculating premium: {premium_data['error']}"}
+            logger.error(f"Premium calculation failed: {premium_data['error']}")
+            return {"answer": f"I'm sorry, I couldn't generate a quote. {premium_data['error']}"}
 
         quote_num = generate_quote_number()
         

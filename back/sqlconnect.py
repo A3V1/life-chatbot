@@ -1,6 +1,7 @@
 import os
 import json
 import uuid
+import logging
 from typing import Any, Dict, Optional
 
 import mysql.connector
@@ -8,6 +9,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def get_mysql_connection():
     """Establishes a connection to the MySQL database."""
@@ -25,6 +29,7 @@ def get_mysql_data() -> list[tuple]:
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM policy_catalog")
     data = cursor.fetchall()
+    logger.info(f"Fetched {len(data)} policies from the database.")
     cursor.close()
     conn.close()
     return data
@@ -115,13 +120,15 @@ def get_user_session(phone_number: str, name: str = None, email: str = None) -> 
         session_data = {**user_info, **user_context}
         
         # Deserialize JSON fields
-        json_fields = ["state_history", "shown_recommendations", "retrieved_docs", "chat_history"]
+        json_fields = ["state_history", "shown_recommendations", "selected_policy_details", "chat_history"]
         for key in json_fields:
             if key in session_data and isinstance(session_data.get(key), str):
                 try:
                     session_data[key] = json.loads(session_data[key])
                 except (json.JSONDecodeError, TypeError):
-                    session_data[key] = [] if 'history' in key or 'docs' in key else None
+                    session_data[key] = [] if 'history' in key else (
+                        {} if 'details' in key else None
+                    )
         
         if not session_data.get("chat_history"):
             session_data["chat_history"] = []
@@ -137,88 +144,6 @@ def get_user_session(phone_number: str, name: str = None, email: str = None) -> 
         conn.close()
 
 
-def get_or_create_user(phone_number: str, name: str = None, email: str = None) -> Dict[str, Any]:
-    """
-    Implements the stateful user flow:
-    1. Checks if a user exists with the given phone number.
-    2. If yes, updates their info and returns the user.
-    3. If no, creates a new user and their initial context, then returns the new user.
-    """
-    conn = get_mysql_connection()
-    cursor = conn.cursor(dictionary=True)
-    
-    try:
-        # Step 1: Check if user exists in user_info
-        cursor.execute("SELECT * FROM user_info WHERE phone_number = %s", (phone_number,))
-        user = cursor.fetchone()
-
-        # Case 1: User Exists
-        if user:
-            # Update name and email if provided
-            if name or email:
-                update_fields = []
-                update_values = []
-                if name:
-                    update_fields.append("name = %s")
-                    update_values.append(name)
-                if email:
-                    update_fields.append("email = %s")
-                    update_values.append(email)
-                
-                if update_fields:
-                    update_query = f"UPDATE user_info SET {', '.join(update_fields)} WHERE user_id = %s"
-                    update_values.append(user['user_id'])
-                    cursor.execute(update_query, tuple(update_values))
-                    conn.commit()
-                    # Re-fetch user to get updated info
-                    cursor.execute("SELECT * FROM user_info WHERE user_id = %s", (user['user_id'],))
-                    user = cursor.fetchone()
-
-            # Check if context exists
-            cursor.execute("SELECT * FROM user_context WHERE user_id = %s", (user['user_id'],))
-            context = cursor.fetchone()
-            if not context:
-                # Create context if it's missing for an existing user
-                cursor.execute(
-                    "INSERT INTO user_context (user_id, context_state) VALUES (%s, %s)",
-                    (user['user_id'], 'welcome'),
-                )
-                conn.commit()
-            return user
-
-        # Case 2: User Not Found - Create new user and context
-        else:
-            # Insert into user_info
-            cursor.execute(
-                "INSERT INTO user_info (phone_number, name, email) VALUES (%s, %s, %s)",
-                (phone_number, name, email),
-            )
-            conn.commit()
-            new_user_id = cursor.lastrowid
-
-            # Insert into user_context
-            cursor.execute(
-                "INSERT INTO user_context (user_id, context_state) VALUES (%s, %s)",
-                (new_user_id, 'welcome'),
-            )
-            conn.commit()
-
-            # Fetch and return the newly created user
-            cursor.execute("SELECT * FROM user_info WHERE user_id = %s", (new_user_id,))
-            new_user = cursor.fetchone()
-            if not new_user:
-                 raise Exception("Failed to create or retrieve user after insertion.")
-            return new_user
-
-    except mysql.connector.Error as err:
-        print(f"Database error in get_or_create_user: {err}")
-        conn.rollback()
-        raise  # Re-raise the exception after rollback
-    finally:
-        cursor.close()
-        conn.close()
-
-
 def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     """Fetches a user by their user_id."""
     conn = get_mysql_connection()
@@ -228,32 +153,6 @@ def get_user_by_id(user_id: int) -> Optional[Dict[str, Any]]:
     cursor.close()
     conn.close()
     return user
-
-
-def get_user_context(user_id: int) -> Dict[str, Any]:
-    """
-    Fetches the current context for a given user by their user_id.
-    Returns a default context if one doesn't exist.
-    """
-    conn = get_mysql_connection()
-    cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM user_context WHERE user_id = %s", (user_id,))
-    context = cursor.fetchone()
-    cursor.close()
-    conn.close()
-
-    if not context:
-        return {"user_id": user_id, "context_state": "welcome", "state_history": ["welcome"], "chat_history": "[]"}
-
-    # Deserialize JSON fields
-    for key in ["state_history", "chat_history", "shown_recommendations", "retrieved_docs"]:
-        if key in context and isinstance(context[key], str):
-            try:
-                context[key] = json.loads(context[key])
-            except (json.JSONDecodeError, TypeError):
-                context[key] = [] if key in ["state_history", "chat_history", "shown_recommendations", "retrieved_docs"] else context[key] # Reset if invalid JSON
-
-    return context
 
 
 def update_user_info(user_id: int, updates: Dict[str, Any]):
@@ -310,7 +209,7 @@ def update_user_context(user_id: int, updates: Dict[str, Any]):
         valid_columns = {row[0] for row in cursor.fetchall()}
 
         # Serialize JSON fields before updating
-        json_fields = ["state_history", "chat_history", "shown_recommendations", "retrieved_docs"]
+        json_fields = ["state_history", "shown_recommendations", "selected_policy_details", "chat_history"]
         for key in json_fields:
             if key in updates and not isinstance(updates[key], str):
                 updates[key] = json.dumps(updates[key])

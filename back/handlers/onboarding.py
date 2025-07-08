@@ -1,11 +1,12 @@
 from typing import Any, Dict
-from sqlconnect import update_user_context, update_user_info
+from sqlconnect import update_user_context, update_user_info, get_user_by_id
 from utils import clean_button_input
 
 # --- Phase 1: Structured Onboarding ---
 
 def handle_existing_policy(bot, query: str) -> Dict[str, Any]:
     """Asks the user if they have an existing policy."""
+    name = get_user_by_id(bot.user_id).get("name", "User")
     if query:
         cleaned_query = clean_button_input(query)
         bot._update_context({
@@ -17,7 +18,7 @@ def handle_existing_policy(bot, query: str) -> Dict[str, Any]:
         return handle_employment_status(bot, "")
     
     return {
-        "answer": "Welcome! To help you find the best-fit insurance plan, I have a few quick questions.",
+        "answer": f"Welcome, {name}! To help you find the best-fit insurance plan, I have a few quick questions.",
         "options": ["I have an existing policy", "I do not have an existing policy"],
     }
 
@@ -71,4 +72,5 @@ def handle_annual_income(bot, query: str) -> Dict[str, Any]:
     return {
         "answer": "What is your approximate annual income?",
         "options": ["Less than 5 Lakhs", "5-10 Lakhs", "10-20 Lakhs", "20+ Lakhs"],
+        "input_type": "dropdown"  # Specify dropdown for the frontend
     }

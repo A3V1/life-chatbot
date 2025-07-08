@@ -21,9 +21,10 @@ from handlers.closing import (
     handle_contact_capture,
     handle_email_capture,
 )
-from handlers.general_qa import handle_general_questions
+from handlers.general_qa import route_general_question, handle_random_query
 from utils import is_general_question
 
+from handlers.quotation import QuotationHandler
 class ImprovedChatBot:
     def __init__(self, phone_number: str, name: str = None, email: str = None):
         session_data = get_user_session(phone_number, name, email)
@@ -92,7 +93,7 @@ class ImprovedChatBot:
             logging.debug(f"Routing query: '{query}' in state: '{current_state}'. Is general: {is_general}")
 
             if is_general:
-                response = handle_general_questions(self, query)
+                response = route_general_question(self, query)
             else:
                 response = self._handle_state(current_state, query)
                 
@@ -101,6 +102,11 @@ class ImprovedChatBot:
                     if new_state != current_state:
                         logging.debug(f"Handler returned empty, transitioning to new state: {new_state}")
                         response = self._handle_state(new_state, "")
+                    else:
+                        # If the state hasn't changed and the handler returned nothing,
+                        # it's a random query.
+                        logging.debug(f"No specific handler for query in state '{current_state}'. Treating as random query.")
+                        response = handle_random_query(self, query)
 
             if query:
                 # If the query is a dictionary (form submission), convert it to a string for logging
@@ -177,8 +183,10 @@ class ImprovedChatBot:
             "dob", "gender", "nationality", "marital_status",
             "education", "gst_applicable", "employment_status", "annual_income", "existing_policy"
         ]
+        
+        user_context_keys = ["plan_option","coverage_required", "premium_budget", "policy_term", "premium_payment_term", "income_payout_frequency","premium_frequency"]
         user_info_data = {k: form_data[k] for k in user_info_keys if k in form_data}
-        user_context_data = {k: form_data[k] for k in form_data if k not in user_info_keys}
+        user_context_data = {k: form_data[k] for k in user_context_keys if k not in user_info_keys}
 
         if user_info_data:
             from sqlconnect import update_user_info
@@ -187,14 +195,15 @@ class ImprovedChatBot:
         if user_context_data:
             self._update_context(user_context_data)
 
-        # 2. Reload context
+        # 2. Reload context and apply form data
         self.context = get_user_session(self.context["phone_number"])
+        self.context.update(user_context_data)
 
         # 3. Generate quote
         from handlers.quotation import QuotationHandler
         from sqlconnect import get_mysql_connection, save_quotation_details
         db_conn = get_mysql_connection()
-        quotation_handler = QuotationHandler(db_conn, self.user_id, self.context)
+        quotation_handler = QuotationHandler(self, self.user_id, self.context)
         response = quotation_handler.handle()
         db_conn.close()
 

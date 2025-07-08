@@ -52,15 +52,13 @@ CREATE TABLE IF NOT EXISTS user_context (
   diversion_count INT DEFAULT 0,
 
   -- Quotation Input
-  primary_need VARCHAR(100),
-  insurance_goal VARCHAR(100),
-  coverage_and_premium BIGINT,
+  plan_option VARCHAR(100),
+  coverage_required BIGINT,
   premium_budget BIGINT,
-  plan_type VARCHAR(100),
   policy_term INT,
   premium_payment_term INT,
-  premium_payment_frequency VARCHAR(50),
-  payout_frequency VARCHAR(50),
+  premium_frequency VARCHAR(50),
+  income_payout_frequency VARCHAR(50),
 
   -- Quotation Output
   quotation_ready BOOLEAN DEFAULT FALSE,
@@ -93,6 +91,7 @@ CREATE TABLE IF NOT EXISTS user_context (
     ON DELETE CASCADE
     ON UPDATE NO ACTION
 );
+
 
 -- -----------------------------------------------------
 -- Table `user_quotations`

@@ -8,11 +8,12 @@ load_dotenv()
 
 # --- LLM and RAG Setup ---
 llm = ChatOpenAI(
-    model="mistralai/mistral-small",
+    model="google/gemini-2.5-flash-lite-preview-06-17",
     openai_api_key=os.getenv("OPENROUTER_API_KEY"),
     openai_api_base="https://openrouter.ai/api/v1",
     temperature=0.7,
     max_tokens=150,  # Reduced token limit
+    max_retries=3, # Retry on failure
 )
 vectorstore = upload_vectorstore("life-insurance")
 retriever = vectorstore.as_retriever(search_kwargs={"k": 1})

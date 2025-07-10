@@ -1,8 +1,46 @@
 
-import './App.css'
+import React, { useState } from 'react';
+import './App.css';
 import ChatWidget from './components/chatwidget';
+import InsuranceQuotationForm from './components/InsuranceQuotationForm';
 
 function App() {
+  const [quoteData, setQuoteData] = useState(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [isFormStarted, setIsFormStarted] = useState(false);
+  const [phoneError, setPhoneError] = useState('');
+
+  const handlePhoneSubmit = (e) => {
+    e.preventDefault();
+    if (phoneNumber.trim().length >= 10) {
+      setIsFormStarted(true);
+      setPhoneError('');
+    } else {
+      setPhoneError('Please enter a valid phone number.');
+    }
+  };
+
+  // const handleQuoteGenerated = async (formData) => {
+  //   try {
+  //     const response = await fetch('http://localhost:8000/api/update_user_and_get_quote', {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({ ...formData, phone_number: phoneNumber }),
+  //     });
+
+  //     if (!response.ok) {
+  //       throw new Error('Failed to get quote');
+  //     }
+
+  //     const data = await response.json();
+  //     setQuoteData(data);
+  //   } catch (error) {
+  //     console.error('Error getting quote:', error);
+  //   }
+  // };
+
   return (
     <div className="life-bg">
       {/* Top Navigation */}
@@ -80,38 +118,33 @@ function App() {
         </div>
         {/* Form Card */}
         <div className="life-hero-form-card">
-          <h2>Let's build a perfect life insurance cover for you</h2>
-          <form>
-            <div className="life-form-group">
-              <label htmlFor="name">Your Name</label>
-              <input id="name" name="name" type="text" placeholder="e.g John" />
-            </div>
-            <div className="life-form-group">
-              <label>Your gender</label>
-              <div className="life-form-row">
-                <button type="button" className="life-form-btn">Male</button>
-                <button type="button" className="life-form-btn">Female</button>
-              </div>
-            </div>
-            <div className="life-form-group">
-              <label>Have you smoked in the past 12 months?</label>
-              <div className="life-form-row">
-                <button type="button" className="life-form-btn">Yes</button>
-                <button type="button" className="life-form-btn">No</button>
-              </div>
-            </div>
-            <div className="life-form-row">
-              <div className="life-form-group">
-                <label>Your age</label>
-                <input type="number" min="18" max="80" placeholder="e.g 30" />
-              </div>
-              <div className="life-form-group">
-                <label>Your pin code</label>
-                <input type="text" maxLength="6" placeholder="e.g 110001" />
-              </div>
-            </div>
-            <button type="submit" className="life-btn life-btn-purple life-btn-block">Get Free Quote</button>
-          </form>
+          {/* {!isFormStarted ? (
+            <>
+              <h2>Let's build a perfect life insurance cover for you</h2>
+              <form onSubmit={handlePhoneSubmit}>
+                <div className="life-form-group">
+                  <label htmlFor="phone">Your Phone Number</label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    placeholder="Enter your 10-digit phone number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                  />
+                  {phoneError && <p className="error-message" style={{color: 'red', fontSize: '12px', marginTop: '4px'}}>{phoneError}</p>}
+                </div>
+                <button type="submit" className="life-btn life-btn-purple life-btn-block">
+                  Get Free Quote
+                </button>
+              </form>
+            </>
+          ) : (
+            <InsuranceQuotationForm
+              onQuoteGenerated={handleQuoteGenerated}
+              initialQuoteData={quoteData}
+            />
+          )} */}
         </div>
       </section>
 
@@ -133,4 +166,4 @@ function App() {
   )
 }
 
-export default App
+export default App;

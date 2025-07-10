@@ -1,0 +1,111 @@
+import logging
+from typing import Any, Dict
+from sqlconnect import update_user_context, get_user_info_for_quote
+from utils import generate_quote_number
+from premium_calculator import calculate_premium
+
+logger = logging.getLogger(__name__)
+
+def _safe_int_conversion(value: Any, default: int = 0) -> int:
+    """Safely converts a value to an integer."""
+    if value is None:
+        return default
+    try:
+        if isinstance(value, str) and not value.isnumeric():
+            return default
+        return int(value)
+    except (ValueError, TypeError):
+        return default
+
+class QuotationHandler:
+    def __init__(self, bot, user_id: int, context: Dict[str, Any]):
+        self.bot = bot
+        self.user_id = user_id
+        self.context = context
+
+    def handle(self) -> Dict[str, Any]:
+        """
+        Generates a premium quotation based on the user's context.
+        This is called directly by the API endpoint.
+        """
+        logger.debug(f"--- Generating Premium Quotation for User ID: {self.user_id} ---")
+        
+        # Fetch the latest user data to ensure consistency
+        db_user_info = get_user_info_for_quote(self.user_id) or {}
+        final_context = {**self.context, **db_user_info}
+
+        policy_term_val = _safe_int_conversion(final_context.get("policy_term"))
+        premium_payment_term_val = _safe_int_conversion(final_context.get("premium_payment_term"))
+
+        if final_context.get("premium_payment_term") == "Same as policy term":
+            premium_payment_term_val = policy_term_val
+
+        premium_inputs = {
+            "coverage": final_context.get("coverage_required"),
+            "budget": final_context.get("premium_budget"),
+            "plan_option": final_context.get("plan_option") or final_context.get("plan_type"),
+            "policy_term": policy_term_val,
+            "premium_payment_term": premium_payment_term_val,
+            "payout_frequency": final_context.get("income_payout_frequency") or final_context.get("payout_frequency"),
+            "dob": final_context.get("dob"),
+        }
+        logger.debug(f"Inputs for premium calculation: {premium_inputs}")
+
+        required_keys = ["plan_option", "policy_term", "premium_payment_term", "payout_frequency", "dob"]
+        missing_keys = [k for k in required_keys if not premium_inputs.get(k)]
+        has_financial_goal = final_context.get("coverage_required") or final_context.get("premium_budget")
+
+        if missing_keys or not has_financial_goal:
+            # Map plan_option to plan_type for logging
+            log_missing_keys = [k.replace("plan_option", "plan_type") for k in missing_keys]
+            logger.warning(f"Quotation failed. Missing keys: {log_missing_keys}, Has financial goal: {has_financial_goal}")
+            return {"answer": "I'm missing some details to generate a quote. Please fill out the form completely."}
+
+        premium_data = calculate_premium(**premium_inputs)
+        if "error" in premium_data:
+            logger.error(f"Premium calculation failed: {premium_data['error']}")
+            return {"answer": f"I'm sorry, I couldn't generate a quote. {premium_data['error']}"}
+
+        quote_num = generate_quote_number()
+        
+        quote_updates = {
+            "quote_number": quote_num,
+            "sum_assured": premium_data.get('sum_assured'),
+            "base_premium": premium_data.get('base_premium'),
+            "gst_amount": premium_data.get('gst'),
+            "total_premium": premium_data.get('total_premium'),
+            "premium_payment_frequency": final_context.get('premium_payment_frequency'),
+            "context_state": "quote_displayed"
+        }
+        
+        logger.debug(f"Updating user context with quote data: {quote_updates}")
+        update_user_context(self.user_id, quote_updates)
+
+        quote_data = {
+            "quote_number": quote_num,
+            "sum_assured": premium_data.get('sum_assured'),
+            "policy_term": final_context.get('policy_term'),
+            "premium_payment_term": final_context.get('premium_payment_term'),
+            "base_premium": premium_data.get('base_premium'),
+            "gst": premium_data.get('gst'),
+            "total_premium": premium_data.get('total_premium'),
+            "premium_frequency": final_context.get('premium_payment_frequency'),
+        }
+        
+        # Format the response for the chatbot
+        answer_text = (
+            f"Here is your personalized quote (Quote ID: {quote_num}):\n"
+            f"- **Plan Selected:** {final_context.get('plan_option') or final_context.get('plan_type')}\n"
+            f"- **Sum Assured:** ₹{premium_data.get('sum_assured'):,.2f}\n"
+            f"- **Policy Term:** {final_context.get('policy_term')} years\n"
+            f"- **Premium Payment Term:** {final_context.get('premium_payment_term')} years\n"
+            f"- **Premium:** ₹{premium_data.get('base_premium'):,.2f}\n"
+            f"- **GST (18%):** ₹{premium_data.get('gst'):,.2f}\n"
+            f"- **Total Payable Premium:** ₹{premium_data.get('total_premium'):,.2f} ({final_context.get('premium_payment_frequency')})"
+        )
+
+        return {
+            "answer": answer_text,
+            "quote_data": quote_data,
+            "actions": ["Proceed to Buy"]
+        }

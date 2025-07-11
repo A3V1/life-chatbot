@@ -1,1 +1,14 @@
+# Ignore environment variables
 .env
+
+# Ignore logs
+*.log
+
+# Ignore Python bytecode
+__pycache__/
+
+# Ignore temporary directory
+temp/
+
+# Ignore data files
+data/*.csv

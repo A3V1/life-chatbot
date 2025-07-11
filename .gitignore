@@ -1,11 +1,11 @@
 # Ignore environment variables
-.env
+back/.env
 
 # Ignore logs
 *.log
 
 # Ignore Python bytecode
-__pycache__/
+back__pycache__/
 
 # Ignore temporary directory
 temp/

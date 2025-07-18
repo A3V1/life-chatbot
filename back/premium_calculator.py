@@ -3,18 +3,18 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
-def get_base_rate(plan_option: str) -> float:
+def get_base_rate(plan_type: str) -> float:
     """Returns a base rate depending on the savings plan type."""
-    plan_option = plan_option.lower()
-    if "wealth" in plan_option:
+    plan_type = plan_type.lower()
+    if "wealth" in plan_type:
         return 0.0012
-    elif "child" in plan_option:
+    elif "child" in plan_type:
         return 0.0014
-    elif "retirement" in plan_option:
+    elif "retirement" in plan_type:
         return 0.0013
-    elif "monthly" in plan_option:
+    elif "monthly" in plan_type:
         return 0.0015
-    elif "endowment" in plan_option:
+    elif "endowment" in plan_type:
         return 0.0011
     else:
         return 0.0012 # Default
@@ -61,7 +61,7 @@ def calculate_age(dob: str) -> int:
         return 30 # Default age if DOB is invalid
 
 def calculate_premium(
-    plan_option: str,
+    plan_type: str,
     policy_term: int,
     premium_payment_term: int,
     payout_frequency: str,
@@ -77,7 +77,7 @@ def calculate_premium(
         return {"error": "Either coverage or budget must be provided."}
 
     # Calculate adjustments
-    base_rate = get_base_rate(plan_option)
+    base_rate = get_base_rate(plan_type)
     term_adj = get_term_adj(policy_term)
     payment_adj = get_premium_term_discount(premium_payment_term, policy_term)
     payout_adj = get_payout_modifier(payout_frequency)

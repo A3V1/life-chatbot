@@ -1,6 +1,30 @@
+:root {
+  --primary-color: #3b82f6;
+  --primary-color-dark: #2563eb;
+  --primary-gradient: linear-gradient(to right, #3b82f6, #6366f1);
+  --secondary-gradient: linear-gradient(to right, #151424, #3b82f6);
+  --background-color: #f9f9f9;
+  --form-background: #f9fafb;
+  --border-color: #e5e7eb;
+  --border-color-light: #d1d5db;
+  --text-light: #e0e7ff;
+  --text-dark: #1f2937;
+  --text-medium: #4b5563;
+  --text-disabled: #9ca3af;
+  --error-color: #ef4444;
+  --success-color: #16a34a;
+  --success-color-dark: #15803d;
+  --warning-bg: #fefce8;
+  --warning-border: #fde047;
+  --warning-text: #854d0e;
+  --border-radius-sm: 0.5rem;
+  --border-radius-md: 0.75rem;
+  --border-radius-full: 9999px;
+}
+
 .insurance-quotation-form {
   height: 100%;
-  background: #f9f9f9;
+  background: var(--background-color);
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -10,7 +34,7 @@
   width: 100%;
   height: 100%;
   margin: 0;
-  background-color: #f9f9f9;
+  background-color: var(--background-color);
   border-radius: 0;
   box-shadow: none;
   overflow: hidden;
@@ -19,18 +43,18 @@
 }
 
 .progress-bar-container {
-  background-color: #e5e7eb;
+  background-color: var(--border-color);
   height: 0.5rem;
 }
 
 .progress-bar {
-  background: linear-gradient(to right, #3b82f6, #6366f1);
+  background: var(--primary-gradient);
   height: 0.5rem;
   transition: width 0.3s ease-in-out;
 }
 
 .form-header {
-  background: linear-gradient(to right, #151424, #3b82f6);
+  background: var(--secondary-gradient);
   color: white;
   /* padding: 0.5rem; */
 }
@@ -43,7 +67,7 @@
 
 .form-header p {
   text-align: center;
-  color: #e0e7ff;
+  color: var(--text-light);
   /* margin-top: 0.5rem; */
 }
 
@@ -56,8 +80,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem;
-  background-color: #f9fafb;
-  border-top: 1px solid #e5e7eb;
+  background-color: var(--form-background);
+  border-top: 1px solid var(--border-color);
 }
 
 .step-dots {
@@ -69,18 +93,18 @@
 .step-dot {
   width: 0.5rem;
   height: 0.5rem;
-  border-radius: 9999px;
+  border-radius: var(--border-radius-full);
   transition: all 0.2s ease-in-out;
 }
 
 .step-dot.active {
-  background-color: #3b82f6;
+  background-color: var(--primary-color);
   width: 0.75rem;
   height: 0.75rem;
 }
 
 .step-dot.inactive {
-  background-color: #d1d5db;
+  background-color: var(--border-color-light);
 }
 
 .nav-button {
@@ -88,7 +112,7 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--border-radius-sm);
   font-weight: 500;
   transition: all 0.2s;
   border: none;
@@ -96,27 +120,27 @@
 }
 
 .nav-button:disabled {
-  background-color: #e5e7eb;
-  color: #9ca3af;
+  background-color: var(--border-color);
+  color: var(--text-disabled);
   cursor: not-allowed;
 }
 
 .back-button {
-  background-color: #f3f4f6;
-  color: #4b5563;
+  background-color: #f3f4f6; /* A slightly different gray, can be variable too */
+  color: var(--text-medium);
 }
 
 .back-button:hover:not(:disabled) {
-  background-color: #e5e7eb;
+  background-color: var(--border-color);
 }
 
 .next-button {
-  background-color: #3b82f6;
+  background-color: var(--primary-color);
   color: white;
 }
 
 .next-button:hover:not(:disabled) {
-  background-color: #2563eb;
+  background-color: var(--primary-color-dark);
 }
 
 .step-content {
@@ -138,39 +162,39 @@
 .step-icon {
   width: 2rem;
   height: 2rem;
-  color: #3b82f6;
+  color: var(--primary-color);
 }
 
 .step-title {
   font-size: 1rem;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text-dark);
 }
 
 .step-description {
-  color: #4b5563;
+  color: var(--text-medium);
   margin-bottom: 1rem;
 }
 
 .input-field {
   width: 100%;
   padding: 1rem;
-  border: 2px solid #d1d5db;
-  border-radius: 0.5rem;
+  border: 2px solid var(--border-color-light);
+  border-radius: var(--border-radius-sm);
   font-size: 1.125rem;
 }
 
 .input-field:focus {
-  border-color: #3b82f6;
+  border-color: var(--primary-color);
   outline: none;
 }
 
 .input-field.error {
-  border-color: #ef4444;
+  border-color: var(--error-color);
 }
 
 .error-message {
-  color: #ef4444;
+  color: var(--error-color);
   font-size: 0.875rem;
 }
 
@@ -182,27 +206,27 @@
 
 .option-button {
   padding: 1rem;
-  border-radius: 0.5rem;
-  border: 2px solid #d1d5db;
+  border-radius: var(--border-radius-sm);
+  border: 2px solid var(--border-color-light);
   text-align: left;
   transition: all 0.2s;
 }
 
 .option-button:hover {
-  border-color: #9ca3af;
+  border-color: var(--text-disabled);
 }
 
 .option-button.selected {
-  border-color: #3b82f6;
-  background-color: #eff6ff;
-  color: #2563eb;
+  border-color: var(--primary-color);
+  background-color: #eff6ff; /* A light blue, can be a variable */
+  color: var(--primary-color-dark);
 }
 
 .range-slider {
   width: 100%;
   height: 0.5rem;
-  background-color: #d1d5db;
-  border-radius: 0.5rem;
+  background-color: var(--border-color-light);
+  border-radius: var(--border-radius-sm);
   -webkit-appearance: none;
   appearance: none;
   cursor: pointer;
@@ -213,8 +237,8 @@
   appearance: none;
   width: 1.5rem;
   height: 1.5rem;
-  background-color: #3b82f6;
-  border-radius: 9999px;
+  background-color: var(--primary-color);
+  border-radius: var(--border-radius-full);
   cursor: pointer;
 }
 
@@ -222,14 +246,28 @@
   text-align: center;
   font-size: 1.25rem;
   font-weight: bold;
-  color: #3b82f6;
+  color: var(--primary-color);
+  margin-top: 0.5rem;
+}
+
+.coverage-input-sync {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.coverage-input-box {
+  width: 150px; /* Adjust width as needed */
+  text-align: center;
+  font-size: 1rem;
+  padding: 0.75rem;
 }
 
 .quote-display {
-  background: linear-gradient(to right, #eff6ff, #e0e7ff);
-  border-radius: 0.75rem;
+  background: linear-gradient(to right, #eff6ff, var(--text-light));
+  border-radius: var(--border-radius-md);
   padding: 1.5rem;
-  border: 2px solid #bfdbfe;
+  border: 2px solid #bfdbfe; /* A light blue, can be a variable */
 }
 
 .quote-header {
@@ -240,18 +278,18 @@
 .quote-title {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text-dark);
   margin-bottom: 0.5rem;
 }
 
 .quote-number {
   font-size: 1.125rem;
-  color: #4b5563;
+  color: var(--text-medium);
 }
 
 .quote-number span {
   font-weight: bold;
-  color: #3b82f6;
+  color: var(--primary-color);
 }
 
 .quote-details-grid {
@@ -272,29 +310,29 @@
   align-items: center;
   padding: 0.75rem;
   background-color: white;
-  border-radius: 0.5rem;
+  border-radius: var(--border-radius-sm);
 }
 
 .quote-detail-label {
   font-weight: 500;
-  color: #374151;
+  color: #374151; /* A darker gray, can be a variable */
 }
 
 .quote-detail-value {
   font-weight: bold;
-  color: #1f2937;
+  color: var(--text-dark);
 }
 
 .quote-detail-value.highlight {
-  color: #16a34a;
+  color: var(--success-color);
   font-size: 1.125rem;
 }
 
 .total-premium-item {
-  background: linear-gradient(to right, #3b82f6, #6366f1);
+  background: var(--primary-gradient);
   color: white;
   padding: 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: var(--border-radius-sm);
 }
 
 .total-premium-label {
@@ -309,14 +347,14 @@
 .quote-note {
   margin-top: 1.5rem;
   padding: 1rem;
-  background-color: #fefce8;
-  border: 1px solid #fde047;
-  border-radius: 0.5rem;
+  background-color: var(--warning-bg);
+  border: 1px solid var(--warning-border);
+  border-radius: var(--border-radius-sm);
 }
 
 .quote-note p {
   font-size: 0.875rem;
-  color: #854d0e;
+  color: var(--warning-text);
 }
 
 .quote-actions {
@@ -328,24 +366,24 @@
 .action-button {
   flex: 1;
   padding: 0.75rem 1.5rem;
-  border-radius: 0.5rem;
+  border-radius: var(--border-radius-sm);
   font-weight: 500;
   transition: background-color 0.2s;
   color: white;
 }
 
 .proceed-button {
-  background-color: #16a34a;
+  background-color: var(--success-color);
 }
 
 .proceed-button:hover {
-  background-color: #15803d;
+  background-color: var(--success-color-dark);
 }
 
 .start-over-button {
-  background-color: #4b5563;
+  background-color: var(--text-medium);
 }
 
 .start-over-button:hover {
-  background-color: #374151;
+  background-color: #374151; /* A darker gray, can be a variable */
 }

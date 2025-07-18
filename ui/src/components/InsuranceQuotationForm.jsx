@@ -1,131 +1,27 @@
-import React, { useState, useEffect } from 'react';
-import { Calendar, User, GraduationCap, Heart, Building, CreditCard, FileText, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import './InsuranceQuotationForm.css';
+import { steps, options, getDynamicMaxCoverage } from '../config/formConfig';
+import useMultiStepForm from '../hooks/useMultiStepForm';
+import FormHeader from './form/FormHeader';
+import StepNavigation from './form/StepNavigation';
+import { Calendar, CreditCard, FileText } from 'lucide-react';
 
 const InsuranceQuotationForm = ({ onQuoteGenerated, initialQuoteData, formData, setFormData }) => {
-  const [currentStep, setCurrentStep] = useState(0);
+  const {
+    currentStep,
+    errors,
+    handleInputChange,
+    handleNext,
+    handleBack,
+  } = useMultiStepForm(formData, setFormData, onQuoteGenerated);
+
   const [quote, setQuote] = useState(null);
-  const [errors, setErrors] = useState({});
 
-  const steps = [
-    { id: 'dob', title: 'Date of Birth', icon: Calendar },
-    { id: 'gender', title: 'Gender', icon: User },
-    { id: 'nationality', title: 'Nationality', icon: Building },
-    { id: 'marital_status', title: 'Marital Status', icon: Heart },
-    { id: 'education', title: 'Education', icon: GraduationCap },
-    { id: 'existing_policy', title: 'Existing Policy', icon: FileText },
-    { id: 'gst_applicable', title: 'GST Applicable', icon: FileText },
-    { id: 'plan_option', title: 'Plan Type', icon: CreditCard },
-    { id: 'coverage_or_premium', title: 'Coverage/Premium', icon: CreditCard },
-    { id: 'policy_term', title: 'Policy Term', icon: FileText },
-    { id: 'premium_payment_term', title: 'Payment Term', icon: CreditCard },
-    { id: 'premium_frequency', title: 'Payment Frequency', icon: CreditCard },
-    { id: 'income_payout_frequency', title: 'Payout Frequency', icon: CreditCard }
-  ];
-
-  const options = {
-    gender: ['Male', 'Female', 'Other', 'Prefer not to say'],
-    nationality: ['Indian', 'American', 'British', 'Canadian', 'Australian', 'German', 'French', 'Japanese', 'Chinese', 'Other'],
-    marital_status: ['Single', 'Married', 'Divorced', 'Widowed', 'Separated'],
-    education: [
-      'High School',
-      'Bachelor\'s Degree',
-      'Master\'s Degree',
-      'PhD/Doctorate',
-      'Professional Degree',
-      'Diploma/Certificate',
-      'Other'
-    ],
-    existing_policy: ['Yes', 'No'],
-    gst_applicable: ['Yes', 'No'],
-    plan_option: [
-      'Wealth Accumulation',
-      'Child Education Plan',
-      'Retirement Income Plan',
-      'Monthly Income Plan',
-      'Endowment / Lump Sum',
-      'Tax Saving Plan',
-      'Marriage Plan'
-    ],
-    policy_term: ['5', '10', '15', '20', '25', '30', '35'],
-    premium_payment_term: ['5', '10', '12', '15', '20', 'Same as policy term'],
-    premium_frequency: ['Monthly', 'Quarterly', 'Half-yearly', 'Annually'],
-    income_payout_frequency: ['Monthly', 'Quarterly', 'Half-yearly', 'Yearly', 'At Maturity (Lump Sum)']
-  };
-
-  const isValidDate = (dateString) => {
-    const regex = /^\d{4}-\d{2}-\d{2}$/;
-    if (!regex.test(dateString)) return false;
-    
-    const date = new Date(dateString);
-    const today = new Date();
-    const age = today.getFullYear() - date.getFullYear();
-    
-    return date instanceof Date && !isNaN(date) && age >= 18 && age <= 65;
-  };
-
-  const validateStep = (stepId) => {
-    const newErrors = {};
-    
-    switch (stepId) {
-      case 'dob':
-        if (!formData.dob) {
-          newErrors.dob = 'Date of birth is required';
-        } else if (!isValidDate(formData.dob)) {
-          newErrors.dob = 'Please enter a valid date (age must be between 18-65)';
-        }
-        break;
-      case 'coverage_or_premium':
-        if (!formData.coverage_required && !formData.premium_budget) {
-          newErrors.coverage_or_premium = 'Please specify either coverage amount or premium budget';
-        }
-        if (formData.premium_budget && formData.premium_budget < 1000) {
-          newErrors.premium_budget = 'Minimum premium is ₹1,000';
-        }
-        break;
-      default:
-        if (!formData[stepId]) {
-          newErrors[stepId] = 'This field is required';
-        }
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
-    }
-  };
-
-  const handleNext = () => {
-    const currentStepId = steps[currentStep].id;
-    
-    if (validateStep(currentStepId)) {
-      if (currentStep === steps.length - 1) {
-        onQuoteGenerated(formData);
-      } else {
-        setCurrentStep(prev => prev + 1);
-      }
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
-  
-  // This effect will be triggered when the parent component passes down the quote
   useEffect(() => {
     if (initialQuoteData && initialQuoteData.quote_data) {
       setQuote(initialQuoteData.quote_data);
-      // setCurrentStep(steps.length - 1); // No longer needed
     }
   }, [initialQuoteData]);
-
 
   const renderStep = () => {
     const step = steps[currentStep];
@@ -152,52 +48,96 @@ const InsuranceQuotationForm = ({ onQuoteGenerated, initialQuoteData, formData, 
           </div>
         );
 
-      case 'coverage_or_premium':
+      case 'coverage_required':
+        const maxCoverage = getDynamicMaxCoverage(formData.policy_term);
+        const coverageValue = formData?.coverage_required || 1000000;
+
+        const handleCoverageChange = (e) => {
+          let value = parseInt(e.target.value, 10);
+          if (isNaN(value)) value = 50000;
+          if (value > maxCoverage) value = maxCoverage;
+          handleInputChange('coverage_required', value);
+        };
+
         return (
           <div className="step-content">
             <div className="step-header">
               <CreditCard className="step-icon" />
-              <h2 className="step-title">Coverage & Premium</h2>
+              <h2 className="step-title">Coverage Amount</h2>
             </div>
-            
-            <div className="option-grid">
-              <div>
-                <label className="step-description">
-                  Desired Coverage (Sum Assured)
-                </label>
+            <div>
+              <label className="step-description">
+                Desired Coverage (Sum Assured)
+              </label>
+              <div className="coverage-input-sync">
                 <input
                   type="range"
                   min="50000"
-                  max="10000000"
+                  max={maxCoverage}
                   step="50000"
-                  value={formData?.coverage_required || 1000000}
-                  onChange={(e) => handleInputChange('coverage_required', parseInt(e.target.value))}
+                  value={coverageValue}
+                  onChange={handleCoverageChange}
                   className="range-slider"
                 />
-                <div className="range-value">
-                  ₹{(formData?.coverage_required || 1000000).toLocaleString()}
-                </div>
-              </div>
-              
-              <div>
-                <label className="step-description">
-                  OR Monthly Premium Budget
-                </label>
                 <input
                   type="number"
-                  placeholder="Enter amount"
-                  value={formData?.premium_budget || ''}
-                  onChange={(e) => handleInputChange('premium_budget', parseInt(e.target.value))}
-                  className="input-field"
-                  min="1000"
+                  min="50000"
+                  max={maxCoverage}
+                  step="50000"
+                  value={coverageValue}
+                  onChange={handleCoverageChange}
+                  className="input-field coverage-input-box"
                 />
-                {errors.premium_budget && <p className="error-message">{errors.premium_budget}</p>}
+              </div>
+              <div className="range-value">
+                ₹{coverageValue.toLocaleString()}
               </div>
             </div>
-            
-            {errors.coverage_or_premium && (
-              <p className="error-message text-center">{errors.coverage_or_premium}</p>
+            {errors.coverage_required && (
+              <p className="error-message text-center">{errors.coverage_required}</p>
             )}
+          </div>
+        );
+
+      case 'terms':
+        return (
+          <div className="step-content">
+            <div className="step-header">
+              <FileText className="step-icon" />
+              <h2 className="step-title">Policy & Payment Term</h2>
+            </div>
+            <div className="option-grid">
+              <div>
+                <label className="step-description">Policy Term (Years)</label>
+                <div className="option-grid">
+                  {options.policy_term.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleInputChange('policy_term', option)}
+                      className={`option-button ${formData?.policy_term === option ? 'selected' : ''}`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                {errors.policy_term && <p className="error-message">{errors.policy_term}</p>}
+              </div>
+              <div>
+                <label className="step-description">Premium Payment Term (Years)</label>
+                <div className="option-grid">
+                  {options.premium_payment_term.map((option) => (
+                    <button
+                      key={option}
+                      onClick={() => handleInputChange('premium_payment_term', option)}
+                      className={`option-button ${formData?.premium_payment_term === option ? 'selected' : ''}`}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                {errors.premium_payment_term && <p className="error-message">{errors.premium_payment_term}</p>}
+              </div>
+            </div>
           </div>
         );
 
@@ -254,58 +194,21 @@ const InsuranceQuotationForm = ({ onQuoteGenerated, initialQuoteData, formData, 
     }
   };
 
-  const progress = ((currentStep + 1) / steps.length) * 100;
-
   return (
     <div className="insurance-quotation-form">
       <div className="form-container">
-        <div className="progress-bar-container">
-          <div 
-            className="progress-bar"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        
-        <div className="form-header">
-          <h1>Insurance Quotation</h1>
-          <p>
-            Step {currentStep + 1} of {steps.length}
-          </p>
-        </div>
+        <FormHeader currentStep={currentStep} steps={steps} />
         
         <div className="form-content">
           {renderStep()}
         </div>
         
-        <div className="step-navigation">
-            <button
-              onClick={handleBack}
-              disabled={currentStep === 0}
-              className="nav-button back-button"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span>Back</span>
-            </button>
-            
-            <div className="step-dots">
-              {steps.map((_, index) => (
-                <div
-                  key={index}
-                  className={`step-dot ${
-                    index <= currentStep ? 'active' : 'inactive'
-                  }`}
-                />
-              ))}
-            </div>
-            
-            <button
-              onClick={handleNext}
-              className="nav-button next-button"
-            >
-              <span>{currentStep === steps.length - 1 ? 'Generate Quote' : 'Next'}</span>
-              <ArrowRight className="w-5 h-5" />
-            </button>
-          </div>
+        <StepNavigation 
+          currentStep={currentStep}
+          steps={steps}
+          handleBack={handleBack}
+          handleNext={handleNext}
+        />
       </div>
     </div>
   );

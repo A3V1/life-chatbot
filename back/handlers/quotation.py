@@ -1,10 +1,49 @@
 import logging
+import json
 from typing import Any, Dict
+from config import llm
 from sqlconnect import update_user_context, get_user_info_for_quote
 from utils import generate_quote_number
 from premium_calculator import calculate_premium
 
 logger = logging.getLogger(__name__)
+
+def handle_generate_premium_quotation(bot, query: str) -> Dict[str, Any]:
+    """
+    Generates a friendly prompt to encourage the user to fill out the quotation form.
+    """
+    user_name = bot.context.get("name", "there")
+    
+    # Extract a simplified user profile for the prompt
+    user_profile_items = {
+        k: v for k, v in bot.context.items()
+        if k in ["employment_status", "annual_income", "existing_policy", "plan_option"] and v is not None
+    }
+    user_profile = json.dumps(user_profile_items, default=str)
+    
+    prompt = f"""You are a friendly and encouraging insurance assistant. Your goal is to motivate the user to get a personalized quote.
+    
+    User's name: {user_name}
+    User's profile highlights: {user_profile}
+
+    The user is now at the stage of generating a premium quotation. Craft a short, welcoming message (under 30 words).
+    - Address the user by name if available.
+    - Briefly mention that the next step is to get a personalized quote.
+    - Encourage them to fill out the form to see their customized options.
+    - Maintain a positive and helpful tone.
+    """
+    
+    try:
+        llm_response = llm.invoke(prompt)
+        answer = llm_response.content if hasattr(llm_response, 'content') else str(llm_response)
+    except Exception as e:
+        logging.error(f"Error in handle_generate_premium_quotation during LLM call: {e}", exc_info=True)
+        answer = "Let's get you a personalized quote! Please fill out the form below to continue."
+
+    return {
+        "answer": answer,
+        "input_type": "multi_step_form"
+    }
 
 def _safe_int_conversion(value: Any, default: int = 0) -> int:
     """Safely converts a value to an integer."""

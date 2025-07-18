@@ -1,14 +1,1 @@
-# Ignore environment variables
-back/.env
-
-# Ignore logs
-*.log
-
-# Ignore Python bytecode
-back__pycache__/
-
-# Ignore temporary directory
-temp/
-
-# Ignore data files
-data/*.csv
+.env

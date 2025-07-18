@@ -40,6 +40,10 @@ def _is_ask_general_questions_button(query: str) -> bool:
     """Check if user clicked ask general questions button"""
     return "ask general questions" in query.lower() or "general questions" in query.lower()
 
+def _is_proceed_to_buy_button(query: str) -> bool:
+    """Check if user clicked proceed to buy button"""
+    return "proceed to buy" in query.lower()
+
 def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
     """Handles the initial recommendation and subsequent user interactions."""
     cleaned_query = clean_button_input(query)
@@ -57,6 +61,13 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
         if _is_ask_general_questions_button(query):
             # Transition to general questions phase         
             return {"answer": "Sure! What would you like to know?"}
+        
+        if _is_proceed_to_buy_button(query):
+            # The policy is already selected, just transition the state
+            bot._update_context({
+                "context_state": "application"  # Transition to the closing phase
+            })
+            return {}
         
         # After providing details, offer the same options again
         if bot.context.get("last_action") == "provided_details":
@@ -124,7 +135,7 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
         })
         
         # Provide the two specific options you want
-        options = ["Get Quotation", "Show Details", "Ask General Questions"]
+        options = ["Get Quotation", "Show Details"]
         
         answer = f"Based on your profile, I recommend the **{structured_policy['name']}**."
         if structured_policy.get('description'):

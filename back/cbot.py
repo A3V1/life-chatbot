@@ -21,10 +21,10 @@ from handlers.closing import (
     handle_contact_capture,
     handle_email_capture,
 )
-from handlers.general_qa import route_general_question, handle_random_query
+from handlers.general_qa import route_general_question, handle_random_query, handle_general_questions
 from utils import is_general_question
 
-from handlers.quotation import QuotationHandler
+from handlers.quotation import QuotationHandler, handle_generate_premium_quotation
 class ImprovedChatBot:
     def __init__(self, phone_number: str, name: str = None, email: str = None):
         session_data = get_user_session(phone_number, name, email)
@@ -143,10 +143,7 @@ class ImprovedChatBot:
             "recommendation_phase": handle_recommendation_phase,
             "recommendation_given_phase": handle_recommendation_phase,
 
-            "generate_premium_quotation": lambda bot, query: {
-                "answer": "Please fill out the form to get your quote.",
-                "input_type": "multi_step_form"
-            },
+            "generate_premium_quotation": handle_generate_premium_quotation,
 
             # Closing
             "application": handle_application,
@@ -164,14 +161,11 @@ class ImprovedChatBot:
             "collect_annual_income": handle_annual_income,
             "recommendation_phase": handle_recommendation_phase,
             "recommendation_given_phase": handle_recommendation_phase,
-            "generate_premium_quotation": lambda bot, query: {
-                "answer": "Please fill out the form to get your quote.",
-                "input_type": "multi_step_form"
-            },
+            "generate_premium_quotation": handle_generate_premium_quotation,
             "application": handle_application,
             "contact_capture": handle_contact_capture,
             "email_capture": handle_email_capture,
-        }
+            "quote_displayed": handle_general_questions,}
         return handlers.get(state)
 
     def update_profile_and_get_quote(self, form_data: Dict[str, Any]) -> Dict[str, Any]:

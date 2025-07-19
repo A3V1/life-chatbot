@@ -144,7 +144,7 @@ class ImprovedChatBot:
             "recommendation_given_phase": handle_recommendation_phase,
 
             "generate_premium_quotation": handle_generate_premium_quotation,
-
+            "quote_displayed": handle_general_questions,
             # Closing
             "application": handle_application,
             "contact_capture": handle_contact_capture,

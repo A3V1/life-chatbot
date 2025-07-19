@@ -34,6 +34,11 @@ class ChatResponse(BaseModel):
     input_type: Optional[str] = None
     slider_config: Optional[Dict[str, Any]] = None
     quote_data: Optional[Dict[str, Any]] = None
+    action_buttons: Optional[Dict[str, bool]] = None
+
+class TrackActionRequest(BaseModel):
+    phone_number: str
+    action: str
 
 class QuotationRequest(BaseModel):
     phone_number: str
@@ -101,6 +106,13 @@ def chat(request: ChatRequest):
         response_data = bot.handle_message(request.query)
         # Ensure chat_history is not sent on every turn to save bandwidth
         response_data["chat_history"] = []
+        
+        # Add button state to the response
+        response_data["action_buttons"] = {
+            "getQuotation": not bot.context.get("quotation_clicked", False),
+            "showDetails": not bot.context.get("details_clicked", False),
+        }
+        
         return response_data
     except Exception as e:
         print(f"An error occurred during chat: {e}")
@@ -128,6 +140,23 @@ def update_user_and_get_quote(request: QuotationRequest):
     except Exception as e:
         print(f"An error occurred during quote generation: {e}")
         raise HTTPException(status_code=500, detail="An internal error occurred during quote generation.")
+
+
+@app.post("/api/track_action")
+def track_action(request: TrackActionRequest):
+    """
+    Tracks a user action (e.g., clicking 'Get Quotation') and updates the database.
+    """
+    try:
+        bot = ImprovedChatBot(phone_number=request.phone_number)
+        if request.action == "get_quotation":
+            bot.update_context({"quotation_clicked": True})
+        elif request.action == "show_details":
+            bot.update_context({"details_clicked": True})
+        return {"status": "success"}
+    except Exception as e:
+        print(f"An error occurred during action tracking: {e}")
+        raise HTTPException(status_code=500, detail="An internal error occurred during action tracking.")
 
 
 @app.get("/")

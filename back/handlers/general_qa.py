@@ -4,6 +4,7 @@ from typing import Any, Dict
 from langchain_core.prompts import PromptTemplate
 from config import llm, retriever
 from sqlconnect import get_policy_by_id
+from utils import get_persistent_actions
 
 def route_general_question(bot, query: str, intent: str = "general_qa") -> Dict[str, Any]:
     
@@ -22,18 +23,24 @@ def route_general_question(bot, query: str, intent: str = "general_qa") -> Dict[
         response = handle_general_questions(bot, query)
 
     # Dynamic "nudge back" logic
-    previous_state_handler = bot.get_handler_for_state(state_before_diversion)
-    if previous_state_handler:
-        resumed = previous_state_handler(bot, "")
-        reprompt_message = resumed.get("answer", "Shall we continue?")
-        options = resumed.get("options", [])
-        
-        # Add a polite redirection message
-        response["answer"] += f"\n\nI hope that helps."
-        response["options"] = options
+    if state_before_diversion == "recommendation_given_phase":
+        response["options"] = get_persistent_actions(bot.context)
+    elif state_before_diversion == "generate_premium_quotation":
+        response["answer"] += "\n\nNow, where were we? Let's get back to your quote."
+        response["input_type"] = "multi_step_form"
     else:
-        logging.warning(f"No handler found for state '{state_before_diversion}'")
-        response["options"] = ["Start Over", "Get Policy Recommendations"]
+        previous_state_handler = bot.get_handler_for_state(state_before_diversion)
+        if previous_state_handler:
+            resumed = previous_state_handler(bot, "")
+            reprompt_message = resumed.get("answer", "Shall we continue?")
+            options = resumed.get("options", [])
+            
+            # Add a polite redirection message
+            response["answer"] += f"\n\nI hope that helps. {reprompt_message}"
+            response["options"] = options
+        else:
+            logging.warning(f"No handler found for state '{state_before_diversion}'")
+            response["options"] = ["Start Over", "Get Policy Recommendations"]
 
     return response
 

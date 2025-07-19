@@ -196,10 +196,31 @@ const ChatWidget = () => {
     }
   };
 
-  const handleActionClick = (action) => {
+  const handleActionClick = async (action) => {
     if (action === 'Proceed to Buy') {
       setShowBuyPage(true);
+      return;
     }
+
+    let actionKey;
+    if (action === 'Get Quotation') {
+      actionKey = 'get_quotation';
+    } else if (action === 'Show Details') {
+      actionKey = 'show_details';
+    }
+
+    if (actionKey) {
+      try {
+        await axios.post('http://localhost:8000/api/track_action', {
+          phone_number: phoneNumber,
+          action: actionKey,
+        });
+      } catch (error) {
+        console.error('Error tracking action:', error);
+      }
+    }
+
+    handleSendMessage(action);
   };
 
   const handleSliderChange = (messageId, value) => {

@@ -73,6 +73,8 @@ CREATE TABLE IF NOT EXISTS user_context (
   -- Recommendations
   recommended_policy_type VARCHAR(100),
   shown_recommendations JSON,
+  quotation_clicked BOOLEAN DEFAULT FALSE,
+  details_clicked BOOLEAN DEFAULT FALSE,
   selected_policy VARCHAR(255),
   selected_policy_details JSON,
 

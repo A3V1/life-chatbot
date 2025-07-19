@@ -85,3 +85,15 @@ def generate_quote_number():
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     random_digits = random.randint(1000, 9999)
     return f"QUOTE-{timestamp}-{random_digits}"
+
+def get_persistent_actions(context: dict) -> list[str]:
+    """
+    Returns a list of persistent actions based on the user's context.
+    """
+    actions = []
+    if context.get("context_state") == ("recommendation_given_phase" or "quote_displayed"):
+        if not context.get("quotation_clicked"):
+            actions.append("Get Quotation")
+        if not context.get("details_clicked"):
+            actions.append("Show Details")
+    return actions

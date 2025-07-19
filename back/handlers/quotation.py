@@ -3,7 +3,7 @@ import json
 from typing import Any, Dict
 from config import llm
 from sqlconnect import update_user_context, get_user_info_for_quote
-from utils import generate_quote_number
+from utils import generate_quote_number, get_persistent_actions
 from premium_calculator import calculate_premium
 
 logger = logging.getLogger(__name__)
@@ -169,8 +169,10 @@ class QuotationHandler:
             f"- **Total Payable Premium:** ₹{quote_data['total_premium']:,.2f} ({quote_data['premium_frequency']})"
         )
 
+        actions = ["Proceed to Buy"] + get_persistent_actions(self.context)
+
         return {
             "answer": answer_text,
             "quote_data": quote_data,
-            "actions": ["Proceed to Buy"]
+            "actions": actions
         }

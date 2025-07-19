@@ -5,7 +5,7 @@ from langchain_core.prompts import PromptTemplate
 from config import llm, retriever, RECOMMENDATION_PROMPT
 from handlers.general_qa import handle_general_questions
 from sqlconnect import get_policy_by_id, get_policy_by_name
-from utils import clean_button_input
+from utils import clean_button_input, get_persistent_actions
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +134,8 @@ def handle_recommendation_phase(bot, query: str) -> Dict[str, Any]:
             "selected_policy_type": policy_name
         })
         
-        # Provide the two specific options you want
-        options = ["Get Quotation", "Show Details"]
+        # Dynamically generate options based on user context
+        options = get_persistent_actions(bot.context)
         
         answer = f"Based on your profile, I recommend the **{structured_policy['name']}**."
         if structured_policy.get('description'):
@@ -188,5 +188,9 @@ def _get_more_details(bot) -> Dict[str, Any]:
         f"{details_str}"
     )
 
-    bot._update_context({"last_action": "provided_details"})
-    return {"answer": answer}
+    bot._update_context({"last_action": "provided_details", "details_clicked": True})
+    
+    # After providing details, offer the remaining option
+    options = get_persistent_actions(bot.context)
+    
+    return {"answer": answer, "options": options}
